@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D AI Studio - Feature Demo</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            padding: 24px;
+            background: #0d0d0d;
+            min-height: 100vh;
+        }
+        
+        .demo-card {
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+        
+        .demo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            border-color: #4f46e5;
+        }
+        
+        .demo-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .demo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e5e5e5;
+        }
+        
+        .demo-description {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .demo-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .demo-features li {
+            color: #ccc;
+            font-size: 13px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .demo-features li:before {
+            content: '•';
+            color: #4f46e5;
+            font-weight: bold;
+        }
+        
+        .demo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #4f46e5;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        
+        .demo-link:hover {
+            color: #6366f1;
+        }
+        
+        .hero-section {
+            text-align: center;
+            padding: 60px 24px;
+            background: linear-gradient(135deg, #1a1a1a, #0d0d0d);
+        }
+        
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: #e5e5e5;
+            margin-bottom: 16px;
+        }
+        
+        .hero-subtitle {
+            font-size: 20px;
+            color: #999;
+            margin-bottom: 32px;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .hero-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .hero-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
+        }
+        
+        .hero-btn.secondary {
+            background: transparent;
+            border: 1px solid #333;
+            color: #e5e5e5;
+        }
+        
+        .hero-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-section">
+        <h1 class="hero-title">3D AI Studio</h1>
+        <p class="hero-subtitle">Advanced 3D Content Generation Platform</p>
+        <div class="hero-buttons">
+            <a href="index.html" class="hero-btn">
+                <i class="fas fa-play"></i>
+                Launch Studio
+            </a>
+            <a href="#features" class="hero-btn secondary">
+                <i class="fas fa-list"></i>
+                View Features
+            </a>
+        </div>
+    </div>
+
+    <div id="features" class="demo-grid">
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-shapes"></i>
+                </div>
+                <h3 class="demo-title">Mesh Generation</h3>
+            </div>
+            <p class="demo-description">
+                Generate high-quality 3D meshes from text descriptions or images using state-of-the-art AI models.
+            </p>
+            <ul class="demo-features">
+                <li>Text-to-3D mesh generation</li>
+                <li>Image-to-3D conversion</li>
+                <li>Textured mesh output</li>
+                <li>Multiple format support (GLB, OBJ, FBX)</li>
+                <li>Customizable texture resolution</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Try Mesh Generation <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-paint-brush"></i>
+                </div>
+                <h3 class="demo-title">Mesh Painting</h3>
+            </div>
+            <p class="demo-description">
+                Apply realistic textures and materials to existing 3D meshes using AI-powered painting tools.
+            </p>
+            <ul class="demo-features">
+                <li>Text-based texture painting</li>
+                <li>Image-based texture application</li>
+                <li>High-resolution texture support</li>
+                <li>Material property control</li>
+                <li>Real-time preview</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Try Mesh Painting <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-cut"></i>
+                </div>
+                <h3 class="demo-title">Mesh Segmentation</h3>
+            </div>
+            <p class="demo-description">
+                Intelligently segment 3D meshes into semantic parts for easier editing and manipulation.
+            </p>
+            <ul class="demo-features">
+                <li>Semantic part detection</li>
+                <li>Adjustable segment count (2-32)</li>
+                <li>Geometric segmentation</li>
+                <li>Part labeling and organization</li>
+                <li>Export as separate objects</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Try Mesh Segmentation <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-puzzle-piece"></i>
+                </div>
+                <h3 class="demo-title">Part Completion</h3>
+            </div>
+            <p class="demo-description">
+                Automatically complete missing or damaged parts of 3D models with AI-powered reconstruction.
+            </p>
+            <ul class="demo-features">
+                <li>Automatic missing part detection</li>
+                <li>Intelligent shape completion</li>
+                <li>Multiple quality settings</li>
+                <li>Manual region selection</li>
+                <li>Seamless integration</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Try Part Completion <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-sitemap"></i>
+                </div>
+                <h3 class="demo-title">Auto Rigging</h3>
+            </div>
+            <p class="demo-description">
+                Generate professional character rigs automatically with skeleton creation and skin weighting.
+            </p>
+            <ul class="demo-features">
+                <li>Automatic skeleton generation</li>
+                <li>Smart joint placement</li>
+                <li>Skin weight calculation</li>
+                <li>Multiple character types</li>
+                <li>IK chain creation</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Try Auto Rigging <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="demo-card">
+            <div class="demo-header">
+                <div class="demo-icon">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <h3 class="demo-title">System Features</h3>
+            </div>
+            <p class="demo-description">
+                Advanced system capabilities for professional workflows and integration.
+            </p>
+            <ul class="demo-features">
+                <li>Real-time task monitoring</li>
+                <li>VRAM-aware scheduling</li>
+                <li>Batch processing support</li>
+                <li>API integration ready</li>
+                <li>Multi-format export</li>
+            </ul>
+            <a href="index.html" class="demo-link">
+                Explore System <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 40px; background: #1a1a1a; color: #666;">
+        <p>&copy; 2024 3D AI Studio. Advanced 3D Content Generation Platform.</p>
+        <p style="margin-top: 8px; font-size: 14px;">
+            <a href="index.html" style="color: #4f46e5; text-decoration: none;">Launch Application</a> | 
+            <a href="README.md" style="color: #4f46e5; text-decoration: none;">Documentation</a>
+        </p>
+    </footer>
+</body>
+</html> 
