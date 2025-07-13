@@ -334,7 +334,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
   return (
     <TaskCard status={task.status} onClick={handleCardClick}>
       <TaskHeader>
-        <TaskTitle>{task.name}</TaskTitle>
+        <TaskTitle title={task.name.length > 30 ? task.name : undefined}>
+          {task.name.length > 30 ? task.name.substring(0, 27) + '...' : task.name}
+        </TaskTitle>
         <StatusBadge status={task.status}>
           {getStatusIcon(task.status)} {task.status}
         </StatusBadge>

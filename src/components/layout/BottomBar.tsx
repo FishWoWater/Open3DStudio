@@ -121,11 +121,13 @@ const sceneTools: { id: ViewportTool; icon: string; title: string }[] = [
   { id: 'scale', icon: 'fas fa-expand-arrows-alt', title: 'Scale (R)' }
 ];
 
-const renderModes: { id: RenderMode; icon: string; title: string }[] = [
-  { id: 'solid', icon: 'fas fa-cube', title: 'Solid' },
-  { id: 'wireframe', icon: 'fas fa-project-diagram', title: 'Wireframe' },
-  { id: 'rendered', icon: 'fas fa-eye', title: 'Rendered' },
-  { id: 'material', icon: 'fas fa-palette', title: 'Material' }
+const renderModes: { id: RenderMode; icon: string; title: string; description: string; requiresFeature?: string }[] = [
+  { id: 'solid', icon: 'fas fa-cube', title: 'Solid', description: 'Solid shaded rendering with basic lighting' },
+  { id: 'wireframe', icon: 'fas fa-project-diagram', title: 'Wireframe', description: 'Wireframe view showing mesh topology' },
+  { id: 'rendered', icon: 'fas fa-eye', title: 'Rendered', description: 'Full rendering with original materials and textures' },
+//   { id: 'material', icon: 'fas fa-palette', title: 'Material', description: 'Material preview with advanced lighting' },
+  { id: 'parts', icon: 'fas fa-puzzle-piece', title: 'Show Parts', description: 'Colorize each mesh part with different colors', requiresFeature: 'parts' },
+  { id: 'skeleton', icon: 'fas fa-user-tie', title: 'Show Skeleton', description: 'Show skeleton bones and connections (transparent mesh)', requiresFeature: 'skeleton' }
 ];
 
 const BottomBar: React.FC = () => {
@@ -203,6 +205,17 @@ const BottomBar: React.FC = () => {
     }
   };
 
+  // Check if any loaded models support parts or skeleton features
+  const hasPartsSupport = viewport.loadedModels.some(model => model.parts?.hasParts);
+  const hasSkeletonSupport = viewport.loadedModels.some(model => model.skeleton && model.skeleton.bones.length > 0);
+
+  // Filter render modes based on model capabilities
+  const availableRenderModes = renderModes.filter(mode => {
+    if (mode.requiresFeature === 'parts') return hasPartsSupport;
+    if (mode.requiresFeature === 'skeleton') return hasSkeletonSupport;
+    return true;
+  });
+
   return (
     <BottomBarContainer>
       {/* Scene Controls */}
@@ -234,12 +247,12 @@ const BottomBar: React.FC = () => {
 
       {/* Render Modes */}
       <ControlGroup>
-        {renderModes.map(mode => (
+        {availableRenderModes.map(mode => (
           <ControlButton
             key={mode.id}
             active={viewport.renderMode === mode.id}
             onClick={() => handleRenderModeChange(mode.id)}
-            title={mode.title}
+            title={`${mode.title}: ${mode.description}`}
           >
             <i className={mode.icon}></i>
           </ControlButton>

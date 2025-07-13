@@ -45,13 +45,14 @@ const ModelRenderer: React.FC<ModelRendererProps> = ({
         renderMode,
         model.material,
         model.originalMaterials,
-        model.selected
+        model.selected,
+        { skeleton: model.skeleton, parts: model.parts }
       );
 
       lastRenderMode.current = renderMode;
       lastSelected.current = model.selected;
     }
-  }, [renderMode, model.selected, model.object3D, model.material, model.originalMaterials]);
+  }, [renderMode, model.selected, model.object3D, model.material, model.originalMaterials, model.skeleton, model.parts]);
 
   // Set userData for selection
   useEffect(() => {

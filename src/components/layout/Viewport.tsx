@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useCallback, useMemo } from 'react';
+import React, { Suspense, useRef, useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
@@ -41,7 +41,12 @@ const ViewportInfo = styled.div`
   }
 `;
 
-const TestButton = styled.button`
+const TestDropdown = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const TestMainButton = styled.button`
   background: ${props => props.theme.colors.primary[600]};
   color: white;
   border: none;
@@ -49,9 +54,49 @@ const TestButton = styled.button`
   border-radius: ${props => props.theme.borderRadius.md};
   font-size: ${props => props.theme.typography.fontSize.sm};
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
   
   &:hover {
     background: ${props => props.theme.colors.primary[500]};
+  }
+`;
+
+const TestDropdownMenu = styled.div<{ isOpen: boolean }>`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: ${props => props.theme.colors.background.secondary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+  box-shadow: ${props => props.theme.shadows.lg};
+  z-index: 1000;
+  min-width: 150px;
+  display: ${props => props.isOpen ? 'block' : 'none'};
+  margin-top: 4px;
+`;
+
+const TestDropdownItem = styled.button`
+  width: 100%;
+  background: none;
+  border: none;
+  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: pointer;
+  text-align: left;
+  
+  &:hover {
+    background: ${props => props.theme.colors.background.tertiary};
+  }
+  
+  &:first-child {
+    border-radius: ${props => props.theme.borderRadius.md} ${props => props.theme.borderRadius.md} 0 0;
+  }
+  
+  &:last-child {
+    border-radius: 0 0 ${props => props.theme.borderRadius.md} ${props => props.theme.borderRadius.md};
   }
 `;
 
@@ -224,40 +269,34 @@ const Scene: React.FC = () => {
 const Viewport: React.FC = () => {
   const viewport = useViewport();
   const { addModel, clearSelection } = useStoreActions();
+  const [testDropdownOpen, setTestDropdownOpen] = useState(false);
 
   const addTestModel = () => {
-      const group = new THREE.Group();
+    try {
+      // Create a simple cube
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({ color: '#8888ff' });
+      const mesh = new THREE.Mesh(geometry, material);
       
-      // Create different parts with different materials
-      const parts = [
-        { geometry: new THREE.BoxGeometry(1, 1, 1), position: [0, 0, 0], material: { color: '#aaaaaa', metalness: 0.8, roughness: 0.2 } },
-      ];
-      
-      parts.forEach(part => {
-        const material = new THREE.MeshStandardMaterial(part.material);
-        const mesh = new THREE.Mesh(part.geometry, material);
-        mesh.position.set(part.position[0], part.position[1], part.position[2]);
-        group.add(mesh);
+      addModel({
+        id: `test-${Date.now()}`,
+        name: 'Test Cube',
+        url: '',
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visible: true,
+        selected: false,
+        object3D: mesh
       });
-      
-    addModel({
-      id: `test-${Date.now()}`,
-      name: 'Test Cube',
-      url: '',
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      visible: true,
-      selected: false,
-      object3D: group
-    });
+    } catch (error) {
+      console.error('Error adding test model:', error);
+    }
   };
 
-  const addTestGLBModel = async () => {
+  const addTestGLBModel = () => {
     try {
       // For demo purposes, we'll create a procedural model with multiple materials
-      const THREE = await import('three');
-      
       // Create a group with multiple meshes to simulate imported GLB structure
       const group = new THREE.Group();
       
@@ -268,10 +307,11 @@ const Viewport: React.FC = () => {
         { geometry: new THREE.SphereGeometry(0.3, 8, 6), position: [0, 1.8, 0], material: { color: '#45b7d1', metalness: 0.5, roughness: 0.3 } }
       ];
       
-      parts.forEach(part => {
+      parts.forEach((part, index) => {
         const material = new THREE.MeshStandardMaterial(part.material);
         const mesh = new THREE.Mesh(part.geometry, material);
         mesh.position.set(part.position[0], part.position[1], part.position[2]);
+        mesh.name = `Mesh_${index}`;
         group.add(mesh);
       });
       
@@ -294,6 +334,77 @@ const Viewport: React.FC = () => {
     }
   };
 
+  const addTestSkeletonModel = () => {
+    try {
+      // Create a simple character-like model with skeleton
+      const group = new THREE.Group();
+      
+      // Create body mesh
+      const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+      const bodyMaterial = new THREE.MeshStandardMaterial({ color: '#8B4513' });
+      const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      bodyMesh.position.set(0, 0.6, 0);
+      
+      // Create head mesh  
+      const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+      const headMaterial = new THREE.MeshStandardMaterial({ color: '#FFDBAC' });
+      const headMesh = new THREE.Mesh(headGeometry, headMaterial);
+      headMesh.position.set(0, 1.5, 0);
+      
+      group.add(bodyMesh, headMesh);
+      
+      // Create a simple skeleton structure
+      const rootBone = new THREE.Bone();
+      rootBone.position.set(0, 0, 0);
+      rootBone.name = 'Root';
+      
+      const spineBone = new THREE.Bone();
+      spineBone.position.set(0, 0.6, 0);
+      spineBone.name = 'Spine';
+      rootBone.add(spineBone);
+      
+      const neckBone = new THREE.Bone();
+      neckBone.position.set(0, 1.2, 0);
+      neckBone.name = 'Neck';
+      spineBone.add(neckBone);
+      
+      const headBone = new THREE.Bone();
+      headBone.position.set(0, 1.5, 0);
+      headBone.name = 'Head';
+      neckBone.add(headBone);
+      
+      // Add arms
+      const leftShoulderBone = new THREE.Bone();
+      leftShoulderBone.position.set(-0.4, 1.0, 0);
+      leftShoulderBone.name = 'LeftShoulder';
+      spineBone.add(leftShoulderBone);
+      
+      const rightShoulderBone = new THREE.Bone();
+      rightShoulderBone.position.set(0.4, 1.0, 0);
+      rightShoulderBone.name = 'RightShoulder';
+      spineBone.add(rightShoulderBone);
+      
+      group.add(rootBone);
+      
+      // Position the group
+      group.position.set(-2, 0, 0);
+      
+      addModel({
+        id: `test-skeleton-${Date.now()}`,
+        name: 'Test Skeleton Model',
+        url: '',
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visible: true,
+        selected: false,
+        object3D: group
+      });
+    } catch (error) {
+      console.error('Failed to create test skeleton model:', error);
+    }
+  };
+
   return (
     <ViewportContainer>
       <ViewportHeader>
@@ -304,10 +415,38 @@ const Viewport: React.FC = () => {
           <span className="separator">•</span>
           <span>Render: {viewport.renderMode}</span>
         </ViewportInfo>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <TestButton onClick={addTestModel}>Cube</TestButton>
-          <TestButton onClick={addTestGLBModel}>Dummy Model</TestButton>
-        </div>
+        <TestDropdown>
+          <TestMainButton onClick={() => setTestDropdownOpen(!testDropdownOpen)}>
+            Test Models
+            <i className={`fas fa-chevron-${testDropdownOpen ? 'up' : 'down'}`}></i>
+          </TestMainButton>
+          <TestDropdownMenu isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>
+            <TestDropdownItem onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              addTestModel(); 
+              setTestDropdownOpen(false); 
+            }}>
+              Simple Cube
+            </TestDropdownItem>
+            <TestDropdownItem onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              addTestGLBModel(); 
+              setTestDropdownOpen(false); 
+            }}>
+              Parts Model
+            </TestDropdownItem>
+            <TestDropdownItem onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              addTestSkeletonModel(); 
+              setTestDropdownOpen(false); 
+            }}>
+              Skeleton Model
+            </TestDropdownItem>
+          </TestDropdownMenu>
+        </TestDropdown>
       </ViewportHeader>
       
       <ViewportContent>

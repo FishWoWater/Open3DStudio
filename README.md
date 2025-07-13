@@ -19,6 +19,34 @@ A cross-platform 3D AIGC (AI Generated Content) studio built with React, Electro
 - **API Integration**: Complete integration with backend AI services
 - **Modern UI**: Professional dark theme with glass morphism effects
 
+## Desktop App (Electron)
+
+### 📦 Building for macOS
+The application is configured to build native macOS apps using Electron:
+
+```bash
+# Development mode (runs both React and Electron)
+npm run dev
+
+# Build for macOS only
+npm run dist-mac
+
+# Build for all platforms
+npm run dist
+```
+
+### 🎯 macOS Features
+- **Universal Binary**: Supports both Intel and Apple Silicon Macs
+- **DMG Installer**: Professional disk image installer
+- **Native Menus**: macOS-style menu bar with keyboard shortcuts
+- **File Associations**: Open 3D model files directly from Finder
+- **No Code Signing**: Unsigned builds for development/testing
+
+### 📋 Build Output
+After running `npm run dist-mac`, you'll find:
+- `dist/Minimal 3D Studio-0.1.0.dmg` - Intel Mac version
+- `dist/Minimal 3D Studio-0.1.0-arm64.dmg` - Apple Silicon version
+
 ## Architecture
 
 ### Frontend Stack
