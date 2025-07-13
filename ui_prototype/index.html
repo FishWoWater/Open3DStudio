@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D AI Studio - Main Workspace</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/enhancements.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Settings Panel (Right-Top) -->
+    <div id="settings-panel" class="settings-panel">
+        <button class="settings-toggle" id="settings-toggle">
+            <i class="fas fa-cog"></i>
+        </button>
+        <div class="settings-content" id="settings-content">
+            <h3>Settings</h3>
+            <div class="setting-group">
+                <label>API Endpoint</label>
+                <input type="text" placeholder="http://localhost:8000" value="http://localhost:8000">
+            </div>
+            <div class="setting-group">
+                <label>API Key</label>
+                <input type="password" placeholder="Enter your API key">
+            </div>
+            <div class="setting-group">
+                <label>Theme</label>
+                <select>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <div class="logo">
+            <i class="fas fa-cube"></i>
+            <span>3D AI Studio</span>
+        </div>
+        
+        <nav class="main-nav">
+            <button class="nav-item active" data-module="mesh-generation">
+                <i class="fas fa-shapes"></i>
+                <span>Mesh Generation</span>
+            </button>
+            <button class="nav-item" data-module="mesh-painting">
+                <i class="fas fa-paint-brush"></i>
+                <span>Mesh Painting</span>
+            </button>
+            <button class="nav-item" data-module="mesh-segmentation">
+                <i class="fas fa-cut"></i>
+                <span>Mesh Segmentation</span>
+            </button>
+            <button class="nav-item" data-module="part-completion">
+                <i class="fas fa-puzzle-piece"></i>
+                <span>Part Completion</span>
+            </button>
+            <button class="nav-item" data-module="auto-rigging">
+                <i class="fas fa-sitemap"></i>
+                <span>Auto Rigging</span>
+            </button>
+        </nav>
+
+        <div class="header-actions">
+            <button class="action-btn">
+                <i class="fas fa-save"></i>
+            </button>
+            <button class="action-btn">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar">
+            <div class="sidebar-header">
+                <h3 id="sidebar-title">Mesh Generation</h3>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Mesh Generation Controls -->
+                <div id="mesh-generation-panel" class="feature-panel active">
+                    <div class="feature-tabs">
+                        <button class="tab-btn active" data-feature="text-to-mesh">Text to Mesh</button>
+                        <button class="tab-btn" data-feature="image-to-mesh">Image to Mesh</button>
+                        <!-- <button class="tab-btn" data-feature="mesh-painting">Mesh Painting</button> -->
+                        <!-- <button class="tab-btn" data-feature="part-completion">Part Completion</button> -->
+                    </div>
+
+                    <!-- Text to Mesh -->
+                    <div id="text-to-mesh" class="feature-content active">
+                        <div class="form-group">
+                            <label>Text Prompt</label>
+                            <textarea placeholder="Describe the 3D object you want to generate..." rows="3"></textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Output Format</label>
+                                <select>
+                                    <option value="glb">GLB</option>
+                                    <option value="obj">OBJ</option>
+                                    <option value="fbx">FBX</option>
+                                    <option value="ply">PLY</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Generate Textured Mesh</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="textured-mesh" class="toggle-input">
+                                    <label for="textured-mesh" class="toggle-label">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group texture-options" style="display: none;">
+                            <label>Texture Prompt</label>
+                            <textarea placeholder="Describe the texture/material..." rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group texture-options" style="display: none;">
+                            <label>Texture Resolution</label>
+                            <select>
+                                <option value="512">512x512</option>
+                                <option value="1024" selected>1024x1024</option>
+                                <option value="2048">2048x2048</option>
+                            </select>
+                        </div>
+
+                        <button class="generate-btn">
+                            <i class="fas fa-magic"></i>
+                            Generate Mesh
+                        </button>
+                    </div>
+
+                    <!-- Image to Mesh -->
+                    <div id="image-to-mesh" class="feature-content">
+                        <div class="upload-area">
+                            <div class="upload-zone" id="image-upload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drop image here or click to upload</p>
+                                <small>Supports: PNG, JPG, JPEG, WebP (Max 50MB)</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Output Format</label>
+                                <select>
+                                    <option value="glb">GLB</option>
+                                    <option value="obj">OBJ</option>
+                                    <option value="fbx">FBX</option>
+                                    <option value="ply">PLY</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Textured</label>
+                                <input type="checkbox" id="image-textured-mesh">
+                            </div>
+                        </div>
+
+                        <button class="generate-btn">
+                            <i class="fas fa-magic"></i>
+                            Generate from Image
+                        </button>
+                    </div>
+
+                    <!-- Other feature contents will be dynamically loaded -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main 3D Viewport -->
+        <main class="viewport-container">
+            <div class="viewport-header">
+                <div class="viewport-info">
+                    <span>Scene: Untitled</span>
+                    <span class="separator">•</span>
+                    <span>Objects: 0</span>
+                </div>
+            </div>
+            
+            <div class="viewport" id="main-viewport">
+                <div class="viewport-placeholder">
+                    <i class="fas fa-cube"></i>
+                    <h3>3D Viewport</h3>
+                    <p>Your generated 3D models will appear here</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+            <div class="sidebar-header">
+                <h3>Task History</h3>
+                <button class="clear-btn">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            
+            <div class="task-list">
+                <!-- Sample tasks -->
+                <div class="task-item completed">
+                    <div class="task-preview">
+                        <img src="https://via.placeholder.com/80x80/2a2a2a/666?text=3D" alt="Preview">
+                        <div class="task-status">
+                            <i class="fas fa-check"></i>
+                        </div>
+                    </div>
+                    <div class="task-info">
+                        <h4>Red Sports Car</h4>
+                        <p>Text to Mesh</p>
+                        <span class="task-time">2 minutes ago</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="action-btn" title="Load to viewport">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="task-item processing">
+                    <div class="task-preview">
+                        <div class="loading-spinner"></div>
+                        <div class="task-status">
+                            <i class="fas fa-cog fa-spin"></i>
+                        </div>
+                    </div>
+                    <div class="task-info">
+                        <h4>Vintage Chair</h4>
+                        <p>Image to Mesh</p>
+                        <span class="task-time">Processing...</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="action-btn" title="Cancel" disabled>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="task-item queued">
+                    <div class="task-preview">
+                        <img src="https://via.placeholder.com/80x80/2a2a2a/666?text=IMG" alt="Preview">
+                        <div class="task-status">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="task-info">
+                        <h4>Modern Lamp</h4>
+                        <p>Mesh Segmentation</p>
+                        <span class="task-time">Queued</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="action-btn" title="Cancel">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Bottom Bar -->
+    <footer class="bottom-bar">
+        <div class="scene-controls">
+            <button class="control-btn active" title="Select">
+                <i class="fas fa-mouse-pointer"></i>
+            </button>
+            <button class="control-btn" title="Move">
+                <i class="fas fa-arrows-alt"></i>
+            </button>
+            <button class="control-btn" title="Rotate">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="control-btn" title="Scale">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+            <div class="separator"></div>
+            <button class="control-btn" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+
+        <div class="render-modes">
+            <button class="mode-btn active" data-mode="solid" title="Solid">
+                <i class="fas fa-cube"></i>
+            </button>
+            <button class="mode-btn" data-mode="wireframe" title="Wireframe">
+                <i class="fas fa-project-diagram"></i>
+            </button>
+            <button class="mode-btn" data-mode="rendered" title="Rendered">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+
+        <div class="status-info">
+            <span>Ready</span>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html> 

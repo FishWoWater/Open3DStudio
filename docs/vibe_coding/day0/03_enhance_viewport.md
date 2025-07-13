@@ -1,0 +1,2 @@
+Now I need you to enhance the 3d viewport. Specifically, in the bottom bar there are a number of buttons , including scene tools like rotate/move/scale  scene objects around. I need you to support selecting objects in the scene and then apply these scene tools accordingly. Also there are buttons switching rendering modes (solid / wireframe / rendered), I need you to switch the material logics when these buttons are clicked or switched.
+Make good plans before you begin, you are an expert and don't hold back, give it your BEST.
