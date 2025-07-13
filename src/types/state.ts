@@ -140,7 +140,7 @@ export interface ViewportState {
   gridSize: number;
 }
 
-export type RenderMode = 'solid' | 'wireframe' | 'rendered' | 'material';
+export type RenderMode = 'solid' | 'wireframe' | 'rendered' | 'material' | 'parts' | 'skeleton';
 export type BackgroundType = 'default' | 'environment' | 'color' | 'gradient';
 export type ViewportTool = 'select' | 'move' | 'rotate' | 'scale';
 export type TransformMode = 'local' | 'world' | 'screen';
@@ -168,6 +168,21 @@ export interface LoadedModel {
   boundingBox?: BoundingBox;
   // Store original materials for imported models to enable proper material switching
   originalMaterials?: (THREE.Material | THREE.Material[])[];
+  // Skeleton information for skeleton render mode
+  skeleton?: {
+    bones: any[]; // THREE.Bone objects
+    skinnedMeshes: any[]; // Meshes with skeleton
+    animations?: any[]; // AnimationClips if available
+  };
+  // Parts information for parts render mode
+  parts?: {
+    meshGroups: { 
+      name: string; 
+      meshes: any[]; // THREE.Mesh objects in this group
+      originalMaterial?: any; 
+    }[];
+    hasParts: boolean;
+  };
 }
 
 export interface ModelMaterial {

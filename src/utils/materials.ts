@@ -26,12 +26,53 @@ export class MaterialManager {
       case 'material':
         material = this.createMaterialPreviewMaterial(config);
         break;
+      case 'parts':
+        material = this.createPartsMaterial(config);
+        break;
+      case 'skeleton':
+        material = this.createSkeletonMaterial(config);
+        break;
       default:
         material = this.createSolidMaterial(config);
     }
     
     this.materials.set(key, material);
     return material;
+  }
+
+  /**
+   * Ensure all geometries in an object have proper normals for lighting
+   */
+  static ensureNormals(object: THREE.Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        const geometry = child.geometry;
+        
+        // Check if geometry has normals attribute
+        if (!geometry.attributes.normal) {
+          console.log('Computing missing normals for geometry');
+          geometry.computeVertexNormals();
+        } else {
+          // Check if normals are all zero (invalid)
+          const normals = geometry.attributes.normal.array;
+          let hasValidNormals = false;
+          for (let i = 0; i < normals.length; i += 3) {
+            const x = normals[i];
+            const y = normals[i + 1];
+            const z = normals[i + 2];
+            if (x !== 0 || y !== 0 || z !== 0) {
+              hasValidNormals = true;
+              break;
+            }
+          }
+          
+          if (!hasValidNormals) {
+            console.log('Recomputing invalid normals for geometry');
+            geometry.computeVertexNormals();
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -43,13 +84,30 @@ export class MaterialManager {
     renderMode: RenderMode, 
     config?: ModelMaterial,
     originalMaterials?: (THREE.Material | THREE.Material[])[],
-    isSelected: boolean = false
+    isSelected: boolean = false,
+    modelData?: { skeleton?: any; parts?: any }
   ): void {
     if (!object) return;
+
+    // Ensure geometries have proper normals before applying lighting-dependent materials
+    if (renderMode === 'solid' || renderMode === 'rendered' || renderMode === 'material') {
+      this.ensureNormals(object);
+    }
 
     // If it's a selected object, use selection material regardless of render mode
     if (isSelected) {
       this.applySelectionMaterialToObject(object, renderMode);
+      return;
+    }
+
+    // Handle special render modes first
+    if (renderMode === 'parts' && modelData?.parts?.hasParts) {
+      this.applyPartsMaterialToObject(object, modelData.parts);
+      return;
+    }
+
+    if (renderMode === 'skeleton' && modelData?.skeleton) {
+      this.applySkeletonMaterialToObject(object, modelData.skeleton, originalMaterials, config);
       return;
     }
 
@@ -80,6 +138,9 @@ export class MaterialManager {
     config?: ModelMaterial
   ): void {
     let materialIndex = 0;
+    
+    // Clear any existing helpers first
+    this.clearAllHelpers(object);
     
     object.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material && materialIndex < originalMaterials.length) {
@@ -128,6 +189,26 @@ export class MaterialManager {
               transparent: config?.transparent || false,
               opacity: config?.opacity || 1.0,
               wireframe: false
+            });
+            break;
+
+          case 'parts':
+            // Parts mode is handled separately in applyPartsMaterialToObject
+            // This won't be called for parts mode
+            child.material = new THREE.MeshLambertMaterial({
+              color: colorHex,
+              wireframe: false
+            });
+            break;
+
+          case 'skeleton':
+            // For skeleton mode, make mesh transparent
+            child.material = new THREE.MeshBasicMaterial({
+              color: colorHex,
+              transparent: true,
+              opacity: 0.3,
+              wireframe: false,
+              side: THREE.DoubleSide
             });
             break;
             
@@ -196,6 +277,9 @@ export class MaterialManager {
   ): void {
     const material = this.getMaterial(renderMode, config);
     
+    // Clear any existing helpers first
+    this.clearAllHelpers(object);
+    
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         // Clear any existing wireframe helpers
@@ -225,6 +309,9 @@ export class MaterialManager {
    */
   private static applySelectionMaterialToObject(object: THREE.Object3D, renderMode: RenderMode): void {
     const selectionMaterial = this.getSelectionMaterial(renderMode);
+    
+    // Clear any existing helpers first
+    this.clearAllHelpers(object);
     
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -281,6 +368,157 @@ export class MaterialManager {
       }
     });
   }
+
+  /**
+   * Clear all render mode helpers (wireframe, skeleton) from object
+   */
+  static clearAllHelpers(object: THREE.Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        this.clearWireframeHelpers(child);
+      }
+    });
+    this.clearSkeletonHelpers(object);
+  }
+
+  /**
+   * Apply different colors to each mesh group for parts visualization
+   */
+  private static applyPartsMaterialToObject(object: THREE.Object3D, partsData: any): void {
+    // Predefined colors for different parts
+    const partColors = [
+      '#ff6b6b', '#4ecdc4', '#45b7d1', '#feca57', '#ff9ff3',
+      '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43', '#10ac84',
+      '#ee5a24', '#0abde3', '#3742fa', '#f368e0', '#feca57'
+    ];
+
+    // If we have mesh groups defined
+    if (partsData.meshGroups && partsData.meshGroups.length > 0) {
+      partsData.meshGroups.forEach((group: any, groupIndex: number) => {
+        const color = partColors[groupIndex % partColors.length];
+        group.meshes.forEach((mesh: THREE.Mesh) => {
+          if (mesh) {
+            mesh.material = new THREE.MeshLambertMaterial({
+              color: color,
+              transparent: false,
+              opacity: 1.0,
+              wireframe: false
+            });
+          }
+        });
+      });
+    } else {
+      // Fallback: assign colors based on mesh hierarchy
+      let meshIndex = 0;
+      object.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          const color = partColors[meshIndex % partColors.length];
+          child.material = new THREE.MeshLambertMaterial({
+            color: color,
+            transparent: false,
+            opacity: 1.0,
+            wireframe: false
+          });
+          meshIndex++;
+        }
+      });
+    }
+  }
+
+  /**
+   * Apply skeleton visualization with transparent mesh and bone helpers
+   */
+  private static applySkeletonMaterialToObject(
+    object: THREE.Object3D, 
+    skeletonData: any,
+    originalMaterials?: (THREE.Material | THREE.Material[])[],
+    config?: ModelMaterial
+  ): void {
+    // First, make all meshes transparent
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        this.clearWireframeHelpers(child);
+        
+        // Apply transparent material to show skeleton through mesh
+        child.material = new THREE.MeshBasicMaterial({
+          color: config?.color || '#888888',
+          transparent: true,
+          opacity: 0.15,
+          wireframe: false,
+          side: THREE.DoubleSide
+        });
+      }
+    });
+
+    // Add skeleton visualization if bones are available
+    if (skeletonData.bones && skeletonData.bones.length > 0) {
+      this.addSkeletonHelpers(object, skeletonData.bones);
+    }
+  }
+
+  /**
+   * Add skeleton helpers to visualize bones and joints
+   */
+  private static addSkeletonHelpers(object: THREE.Object3D, bones: any[]): void {
+    // Remove existing skeleton helpers
+    this.clearSkeletonHelpers(object);
+
+    bones.forEach((bone, index) => {
+      if (!bone.position) return;
+
+      // Create bone joint sphere
+      const jointGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+      const jointMaterial = new THREE.MeshBasicMaterial({ 
+        color: '#ff6600',
+        depthTest: false,
+        transparent: true,
+        opacity: 0.8
+      });
+      const jointSphere = new THREE.Mesh(jointGeometry, jointMaterial);
+      
+      // Position sphere at bone location
+      jointSphere.position.copy(bone.position);
+      jointSphere.userData.isSkeletonHelper = true;
+      object.add(jointSphere);
+
+      // Create connection line to parent bone
+      if (bone.parent && bone.parent.position) {
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+          bone.position.clone(),
+          bone.parent.position.clone()
+        ]);
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+          color: '#ffaa00',
+          depthTest: false,
+          transparent: true,
+          opacity: 0.7
+        });
+        const boneLine = new THREE.Line(lineGeometry, lineMaterial);
+        boneLine.userData.isSkeletonHelper = true;
+        object.add(boneLine);
+      }
+    });
+  }
+
+  /**
+   * Clear skeleton helpers from object
+   */
+  private static clearSkeletonHelpers(object: THREE.Object3D): void {
+    const helpersToRemove: THREE.Object3D[] = [];
+    object.children.forEach(child => {
+      if (child.userData.isSkeletonHelper) {
+        helpersToRemove.push(child);
+      }
+    });
+    
+    helpersToRemove.forEach(helper => {
+      object.remove(helper);
+      if (helper instanceof THREE.Mesh || helper instanceof THREE.Line) {
+        helper.geometry.dispose();
+        (helper.material as THREE.Material).dispose();
+      }
+    });
+  }
   
   private static createSolidMaterial(config?: ModelMaterial): THREE.Material {
     return new THREE.MeshLambertMaterial({
@@ -321,6 +559,25 @@ export class MaterialManager {
       transparent: config?.transparent || false,
       opacity: config?.opacity || 1.0,
       wireframe: false
+    });
+  }
+
+  private static createPartsMaterial(config?: ModelMaterial): THREE.Material {
+    return new THREE.MeshLambertMaterial({
+      color: config?.color || '#888888',
+      transparent: false,
+      opacity: 1.0,
+      wireframe: false
+    });
+  }
+
+  private static createSkeletonMaterial(config?: ModelMaterial): THREE.Material {
+    return new THREE.MeshBasicMaterial({
+      color: config?.color || '#888888',
+      transparent: true,
+      opacity: 0.3,
+      wireframe: false,
+      side: THREE.DoubleSide
     });
   }
   

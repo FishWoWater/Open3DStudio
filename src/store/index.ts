@@ -146,6 +146,10 @@ interface StoreState extends AppState {
   setSelectedModelsTransform: (transform: Partial<Pick<LoadedModel, 'position' | 'rotation' | 'scale'>>) => void;
   deleteSelectedModels: () => void;
   
+  // Model analysis utilities
+  analyzeModelSkeleton: (object3D: any) => any;
+  analyzeModelParts: (object3D: any) => any;
+  
   // Modal actions
   openModal: (type: ModalType, data?: any) => void;
   closeModal: () => void;
@@ -504,11 +508,15 @@ export const useStore = create<StoreState>()(
 
     // Viewport actions
     addModel: (model: LoadedModel) => {
-      // Store original materials if the model has object3D
+      // Store original materials and analyze model structure
       let modelWithMaterials = { ...model };
       if (model.object3D && !model.originalMaterials) {
         const { MaterialManager } = require('../utils/materials');
         modelWithMaterials.originalMaterials = MaterialManager.storeOriginalMaterials(model.object3D);
+        
+        // Analyze skeleton and parts
+        modelWithMaterials.skeleton = get().analyzeModelSkeleton(model.object3D);
+        modelWithMaterials.parts = get().analyzeModelParts(model.object3D);
       }
 
       set((state) => ({
@@ -848,6 +856,83 @@ export const useStore = create<StoreState>()(
           }
         }
       }));
+    },
+
+    // Model analysis utilities
+    analyzeModelSkeleton: (object3D: any) => {
+      if (!object3D) return undefined;
+
+      const bones: any[] = [];
+      const skinnedMeshes: any[] = [];
+      const animations: any[] = [];
+
+      // Find bones and skinned meshes in the object hierarchy
+      object3D.traverse((child: any) => {
+        if (child.type === 'Bone' || child.isBone === true) {
+          bones.push(child);
+        }
+        if (child.type === 'SkinnedMesh' || child.isSkinnedMesh === true) {
+          skinnedMeshes.push(child);
+          if (child.skeleton && child.skeleton.bones) {
+            // Add skeleton bones if not already included
+            child.skeleton.bones.forEach((bone: any) => {
+              if (!bones.includes(bone)) {
+                bones.push(bone);
+              }
+            });
+          }
+        }
+      });
+
+      // Check for animations
+      if (object3D.animations && object3D.animations.length > 0) {
+        animations.push(...object3D.animations);
+      }
+
+      if (bones.length > 0 || skinnedMeshes.length > 0) {
+        return {
+          bones,
+          skinnedMeshes,
+          animations
+        };
+      }
+
+      return undefined;
+    },
+
+    analyzeModelParts: (object3D: any) => {
+      if (!object3D) return undefined;
+
+      const meshGroups: any[] = [];
+      const meshes: any[] = [];
+
+      // Collect all meshes
+      object3D.traverse((child: any) => {
+        if (child.type === 'Mesh' || (child.isMesh === true) || (child.geometry && child.material)) {
+          meshes.push(child);
+        }
+      });
+
+      // If we have more than one mesh, consider it as having parts
+      if (meshes.length > 1) {
+        // For parts visualization, each mesh should be its own part
+        meshes.forEach((mesh, index) => {
+          meshGroups.push({
+            name: `Part ${index + 1}`,
+            meshes: [mesh],
+            originalMaterial: mesh.material
+          });
+        });
+
+        return {
+          meshGroups,
+          hasParts: meshGroups.length > 1
+        };
+      }
+      return {
+        meshGroups: [],
+        hasParts: false
+      };
     },
 
     // Utility actions

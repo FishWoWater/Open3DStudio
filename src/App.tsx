@@ -4,7 +4,7 @@ import { createApiClient } from './api/client';
 import { useStore, useSettings, useStoreActions } from './store';
 import { useTaskPolling } from './hooks/useTaskPolling';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { theme } from './styles/theme';
+import { getTheme } from './styles/theme';
 
 // Layout Components
 import TopBar from './components/layout/TopBar';
@@ -234,6 +234,9 @@ const App: React.FC = () => {
   const { ui } = useStore();
   const settings = useSettings();
   
+  // Get current theme based on settings
+  const currentTheme = getTheme(settings.theme === 'auto' ? 'dark' : settings.theme);
+  
   // Initialize integrations
   useElectronIntegration();
   const apiInitialized = useApiInitialization();
@@ -250,7 +253,7 @@ const App: React.FC = () => {
   // Show loading screen while initializing
   if (!apiInitialized) {
     return (
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={currentTheme}>
         <GlobalStyle />
         <AppContainer>
           <LoadingOverlay 
@@ -263,7 +266,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={currentTheme}>
       <GlobalStyle />
       <ErrorBoundary>
         <AppContainer>

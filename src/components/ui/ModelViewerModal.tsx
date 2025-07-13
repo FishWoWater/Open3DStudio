@@ -310,6 +310,10 @@ const ModelViewerModal: React.FC<ModelViewerModalProps> = ({
         model = (result as any).scene;
       } else if (format.toLowerCase() === 'ply') {
         const geometry = result as THREE.BufferGeometry;
+        // Ensure geometry has proper normals for lighting
+        if (!geometry.attributes.normal) {
+          geometry.computeVertexNormals();
+        }
         const material = new THREE.MeshLambertMaterial({ color: 0x888888 });
         model = new THREE.Mesh(geometry, material);
       } else {
@@ -320,6 +324,15 @@ const ModelViewerModal: React.FC<ModelViewerModalProps> = ({
       if (modelRef.current) {
         sceneRef.current.remove(modelRef.current);
       }
+
+      // Ensure all geometries have proper normals for lighting
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.geometry) {
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+        }
+      });
 
       // Add new model
       sceneRef.current.add(model);

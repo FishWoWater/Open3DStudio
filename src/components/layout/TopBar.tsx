@@ -4,7 +4,7 @@ import { useCurrentModule, useStoreActions } from '../../store';
 import { ModuleType } from '../../types/state';
 
 const TopBarContainer = styled.header`
-  background: rgba(20, 20, 20, 0.95);
+  background: ${props => props.theme.colors.background.secondary};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
   padding: 0 ${props => props.theme.spacing.lg};
   height: 64px;

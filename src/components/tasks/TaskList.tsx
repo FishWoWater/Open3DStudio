@@ -108,6 +108,10 @@ const TaskList: React.FC<TaskListProps> = ({
           loader = new PLYLoader();
           object = await new Promise((resolve, reject) => {
             loader.load(url, (geometry: any) => {
+              // Ensure geometry has proper normals for lighting
+              if (!geometry.attributes.normal) {
+                geometry.computeVertexNormals();
+              }
               const material = new THREE.MeshLambertMaterial({ color: 0x888888 });
               const mesh = new THREE.Mesh(geometry, material);
               resolve(mesh);
@@ -117,6 +121,15 @@ const TaskList: React.FC<TaskListProps> = ({
         default:
           throw new Error(`Unsupported format: ${format}`);
       }
+
+      // Ensure all geometries have proper normals for lighting
+      object.traverse((child: any) => {
+        if (child instanceof THREE.Mesh && child.geometry) {
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+        }
+      });
 
       // Add to scene via store
       addModel({

@@ -40,13 +40,16 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts build && npm run copy-electron-files",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "electron": "electron .",
+    "copy-electron-files": "cp public/electron.js build/electron.js && cp public/preload.js build/preload.js",
     "build-electron": "npm run build && electron-builder",
-    "dist": "npm run build && electron-builder --publish=never"
+    "dist": "npm run build && electron-builder --publish=never",
+    "dist-mac": "npm run build && electron-builder --mac --publish=never",
+    "pack-mac": "npm run dist-mac && echo '\n✅ macOS builds completed successfully!' && echo '📦 Find your app at:' && echo '   • dist/Minimal 3D Studio-0.1.0.dmg (Intel Mac)' && echo '   • dist/Minimal 3D Studio-0.1.0-arm64.dmg (Apple Silicon)'"
   },
   "eslintConfig": {
     "extends": [
@@ -75,16 +78,39 @@
     "files": [
       "build/**/*",
       "node_modules/**/*",
-      "public/electron.js"
+      "!node_modules/**/*.{md,txt}",
+      "!node_modules/**/LICENSE*",
+      "!node_modules/**/README*",
+      "!node_modules/**/.eslintrc*",
+      "!node_modules/**/.gitignore",
+      "!node_modules/**/package-lock.json",
+      "!node_modules/**/yarn.lock"
     ],
     "mac": {
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "category": "public.app-category.graphics-design",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "identity": null,
+      "gatekeeperAssess": false,
+      "hardenedRuntime": false,
+      "entitlements": null,
+      "entitlementsInherit": null
     },
     "win": {
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "target": "nsis"
     },
     "linux": {
-      "icon": "build/icon.png"
-    }
+      "icon": "build/icon.png",
+      "target": "AppImage"
+    },
+    "compression": "normal",
+    "nodeGypRebuild": false,
+    "buildVersion": "1.0.0"
   }
 }
