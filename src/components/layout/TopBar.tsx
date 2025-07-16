@@ -3,11 +3,17 @@ import styled from 'styled-components';
 import { useCurrentModule, useStoreActions } from '../../store';
 import { ModuleType } from '../../types/state';
 
-const TopBarContainer = styled.header`
+// Detect if running in Electron and platform
+const isElectron = window.electronAPI !== undefined;
+const isMacOS = navigator.platform.toLowerCase().includes('mac');
+const isElectronMacOS = isElectron && isMacOS;
+
+const TopBarContainer = styled.header<{ isElectronMacOS: boolean }>`
   background: ${props => props.theme.colors.background.secondary};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
   padding: 0 ${props => props.theme.spacing.lg};
-  height: 64px;
+  padding-top: ${props => props.isElectronMacOS ? '28px' : '0'};
+  height: ${props => props.isElectronMacOS ? '92px' : '64px'};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -137,7 +143,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
   };
 
   return (
-    <TopBarContainer>
+    <TopBarContainer isElectronMacOS={isElectronMacOS}>
       <Logo>
         <i className="fas fa-cube"></i>
         <span>Minimal 3D Studio</span>
@@ -163,6 +169,12 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
         <ActionButton title="Export Model">
           <i className="fas fa-download"></i>
         </ActionButton> */}
+        <ActionButton 
+          title="View on GitHub" 
+          onClick={() => window.open('https://github.com/FishWoWater/Minimal3DStudio', '_blank')}
+        >
+          <i className="fab fa-github"></i>
+        </ActionButton>
         <ActionButton title="Settings" onClick={handleSettingsClick}>
           <i className="fas fa-cog"></i>
         </ActionButton>

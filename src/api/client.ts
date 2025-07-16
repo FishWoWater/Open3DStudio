@@ -1,8 +1,7 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import { 
   ApiConfig, 
   BaseApiResponse, 
-  ErrorResponse, 
   HealthStatus,
   SystemStatus,
   SchedulerStatus,
@@ -20,7 +19,6 @@ import {
   PartCompletionRequest,
   MeshSegmentationRequest,
   AutoRiggingRequest,
-  UploadResponse,
   FileUploadResponse,
   FileMetadata,
   SupportedFormats,
@@ -340,109 +338,6 @@ class ApiClient {
     return response.data;
   }
 
-  // LEGACY File Upload Endpoints (for backward compatibility)
-  async uploadImage(file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await this.client.post<UploadResponse>(
-      '/api/v1/mesh-generation/upload-image',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
-
-  async uploadMesh(file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await this.client.post<UploadResponse>(
-      '/api/v1/mesh-generation/upload-mesh',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
-
-  // LEGACY Upload with generation endpoints (keeping for backward compatibility)
-  async textMeshPaintingWithUpload(
-    textPrompt: string,
-    meshFile: File,
-    textureResolution: number = 1024,
-    outputFormat: string = 'glb',
-    onProgress?: (progress: number) => void
-  ): Promise<BaseApiResponse> {
-    const formData = new FormData();
-    formData.append('text_prompt', textPrompt);
-    formData.append('texture_resolution', textureResolution.toString());
-    formData.append('output_format', outputFormat);
-    formData.append('mesh_file', meshFile);
-
-    const response = await this.client.post<BaseApiResponse>(
-      '/api/v1/mesh-generation/text-mesh-painting-upload',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
-
-  async imageToRawMeshWithUpload(
-    imageFile: File,
-    outputFormat: string = 'glb',
-    onProgress?: (progress: number) => void
-  ): Promise<BaseApiResponse> {
-    const formData = new FormData();
-    formData.append('output_format', outputFormat);
-    formData.append('image_file', imageFile);
-
-    const response = await this.client.post<BaseApiResponse>(
-      '/api/v1/mesh-generation/image-to-raw-mesh-upload',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
 
   // Mesh Segmentation Endpoints
   async segmentMesh(request: MeshSegmentationRequest): Promise<BaseApiResponse> {
@@ -453,27 +348,6 @@ class ApiClient {
     return response.data;
   }
 
-  async uploadMeshForSegmentation(file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await this.client.post<UploadResponse>(
-      '/api/v1/mesh-segmentation/upload-mesh',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
 
   // Auto Rigging Endpoints
   async generateRig(request: AutoRiggingRequest): Promise<BaseApiResponse> {
@@ -484,27 +358,6 @@ class ApiClient {
     return response.data;
   }
 
-  async uploadMeshForRigging(file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await this.client.post<UploadResponse>(
-      '/api/v1/auto-rigging/upload-mesh',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = (progressEvent.loaded / progressEvent.total) * 100;
-            onProgress(progress);
-          }
-        }
-      }
-    );
-    return response.data;
-  }
 
   // Supported Formats Endpoints
   async getMeshGenerationSupportedFormats(): Promise<SupportedFormats> {

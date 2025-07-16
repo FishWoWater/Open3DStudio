@@ -270,11 +270,11 @@ const BottomBar: React.FC = () => {
           <span>Models: {modelsCount}</span>
         </SystemInfo>
         
-        <PerformanceInfo>
+        {/* <PerformanceInfo>
           <span>FPS: {Math.round(system.performance.frameRate)}</span>
           <span>CPU: {Math.round(system.performance.cpuUsage)}%</span>
           <span>Memory: {Math.round(system.performance.memoryUsage)}%</span>
-        </PerformanceInfo>
+        </PerformanceInfo> */}
       </StatusInfo>
     </BottomBarContainer>
   );

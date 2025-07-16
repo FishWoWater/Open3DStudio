@@ -86,9 +86,11 @@ const TaskMeta = styled.div`
 const TaskType = styled.span`
   background: ${props => props.theme.colors.primary[500]}20;
   color: ${props => props.theme.colors.primary[400]};
-  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
+  padding: 2px ${props => props.theme.spacing.xs};
+  margin-right: 10px;
   border-radius: ${props => props.theme.borderRadius.sm};
   font-weight: ${props => props.theme.typography.fontWeight.medium};
+  font-size: ${props => props.theme.typography.fontSize.xs};
 `;
 
 const TimeInfo = styled.div`
@@ -330,6 +332,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   const inputImages = task.inputData.files?.filter(file => file.type.startsWith('image/')) || [];
   const hasPreviewImage = task.result?.previewImageUrl;
+  
+  // Don't show input images for text-to-mesh tasks since they're text-based
+  const shouldShowInputImages = !task.type.includes('text-to-mesh') && inputImages.length > 0;
 
   return (
     <TaskCard status={task.status} onClick={handleCardClick}>
@@ -382,10 +387,10 @@ const TaskItem: React.FC<TaskItemProps> = ({
       )}
 
       {/* Image Gallery */}
-      {(inputImages.length > 0 || hasPreviewImage) && (
+      {(shouldShowInputImages || hasPreviewImage) && (
         <ImageGallery>
-          {/* Input Images */}
-          {inputImages.map((file, index) => {
+          {/* Input Images - Only show for non-text-to-mesh tasks */}
+          {shouldShowInputImages && inputImages.map((file, index) => {
             const thumbnailUrl = getImageThumbnail(file);
             return (
               <ImageThumbnail key={`input-${index}`}>
