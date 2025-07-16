@@ -6,6 +6,7 @@ import ImagePreview from '../ui/ImagePreview';
 import Select, { SelectOption } from '../ui/Select';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshPaintingRequest } from '../../types/api';
+import { cleanModelName } from '../../utils/modelNames';
 
 const PanelContainer = styled.div`
   padding: ${props => props.theme.spacing.md};
@@ -281,32 +282,38 @@ const MeshPaintingPanel: React.FC = () => {
   }, [handleInputChange]);
 
   const validateForm = useCallback((): string | null => {
+    let errorMessage: string | null = null;
+    
     if (!formData.meshFile) {
-      return 'Please select a 3D mesh file';
-    }
-    
-    if (formData.meshFile.size > 200 * 1024 * 1024) { // 200MB limit from API docs
-      return 'Mesh file must be smaller than 200MB';
-    }
-    
-    if (formData.paintingMode === 'text') {
+      errorMessage = 'Please select a 3D mesh file';
+    } else if (formData.meshFile.size > 200 * 1024 * 1024) { // 200MB limit from API docs
+      errorMessage = 'Mesh file must be smaller than 200MB';
+    } else if (formData.paintingMode === 'text') {
       if (!formData.textPrompt.trim()) {
-        return 'Please enter a texture description';
-      }
-      if (formData.textPrompt.length < 3) {
-        return 'Texture description must be at least 3 characters long';
+        errorMessage = 'Please enter a texture description';
+      } else if (formData.textPrompt.length < 3) {
+        errorMessage = 'Texture description must be at least 3 characters long';
       }
     } else {
       if (!formData.referenceImage) {
-        return 'Please select a reference image';
-      }
-      if (formData.referenceImage.size > 50 * 1024 * 1024) { // 50MB limit from API docs
-        return 'Image file must be smaller than 50MB';
+        errorMessage = 'Please select a reference image';
+      } else if (formData.referenceImage.size > 50 * 1024 * 1024) { // 50MB limit from API docs
+        errorMessage = 'Image file must be smaller than 50MB';
       }
     }
     
-    return null;
-  }, [formData]);
+    // Show notification for validation errors
+    if (errorMessage) {
+      addNotification({
+        type: 'warning',
+        title: 'Invalid Input',
+        message: errorMessage,
+        duration: 4000,
+      });
+    }
+    
+    return errorMessage;
+  }, [formData, addNotification]);
 
   const handlePaint = useCallback(async () => {
     const validationError = validateForm();

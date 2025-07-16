@@ -221,7 +221,7 @@ export interface TextToTexturedMeshRequest {
 export interface ImageToMeshRequest {
   image_path?: string;
   image_base64?: string;
-  image_file_id?: string; // NEW - preferred method
+  image_file_id?: string; // preferred method
   output_format: OutputFormat;
   model_preference?: string;
 }
@@ -229,10 +229,10 @@ export interface ImageToMeshRequest {
 export interface ImageToTexturedMeshRequest {
   image_path?: string;
   image_base64?: string;
-  image_file_id?: string; // NEW - preferred method
+  image_file_id?: string; // preferred method
   texture_image_path?: string;
   texture_image_base64?: string;
-  texture_image_file_id?: string; // NEW - preferred method
+  texture_image_file_id?: string; //preferred method
   texture_resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
@@ -242,10 +242,10 @@ export interface MeshPaintingRequest {
   text_prompt?: string;
   image_path?: string;
   image_base64?: string;
-  image_file_id?: string; // NEW - preferred method
+  image_file_id?: string; // preferred method
   mesh_path?: string;
   mesh_base64?: string;
-  mesh_file_id?: string; // NEW - preferred method
+  mesh_file_id?: string; // preferred method
   texture_resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
@@ -254,7 +254,7 @@ export interface MeshPaintingRequest {
 export interface PartCompletionRequest {
   mesh_path?: string;
   mesh_base64?: string;
-  mesh_file_id?: string; // NEW - preferred method
+  mesh_file_id?: string; // preferred method
   output_format: OutputFormat;
   model_preference?: string;
 }
@@ -263,7 +263,7 @@ export interface PartCompletionRequest {
 export interface MeshSegmentationRequest {
   mesh_path?: string;
   mesh_base64?: string;
-  mesh_file_id?: string; // NEW - preferred method
+  mesh_file_id?: string; // preferred method
   num_parts: number;
   output_format: 'glb' | 'json';
   model_preference?: string;
@@ -272,7 +272,7 @@ export interface MeshSegmentationRequest {
 // Auto Rigging Types - UPDATED
 export interface AutoRiggingRequest {
   mesh_path?: string;
-  mesh_file_id?: string; // NEW - preferred method
+  mesh_file_id?: string; // preferred method
   rig_mode: 'skeleton' | 'skin' | 'full';
   output_format: 'fbx' | 'glb';
   model_preference?: string;

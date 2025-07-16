@@ -7,6 +7,7 @@ import Select, { SelectOption } from '../ui/Select';
 import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
 import { TaskType } from '../../types/state';
 import { JobStatus, TextToMeshRequest, TextToTexturedMeshRequest, ImageToMeshRequest, ImageToTexturedMeshRequest } from '../../types/api';
+import { cleanModelName, isPartPackerAvailable } from '../../utils/modelNames';
 
 const PanelContainer = styled.div`
   padding: ${props => props.theme.spacing.md};
@@ -204,6 +205,19 @@ const WarningBox = styled.div`
   gap: ${props => props.theme.spacing.sm};
 `;
 
+const InfoBox = styled.div`
+  color: ${props => props.theme.colors.primary[400]};
+  background: ${props => `${props.theme.colors.primary[500]}15`};
+  border: 1px solid ${props => `${props.theme.colors.primary[500]}30`};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  margin-bottom: ${props => props.theme.spacing.md};
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+`;
+
 const LoadingSpinner = styled.div`
   width: 16px;
   height: 16px;
@@ -279,6 +293,11 @@ const MeshGenerationPanel: React.FC = () => {
     return getModelsForFeature(featureName);
   }, [mode, getModelsForFeature]);
 
+  // Check for PartPacker availability
+  const partPackerAvailable = useMemo(() => {
+    return isPartPackerAvailable(availableModels);
+  }, [availableModels]);
+
   // Dynamic model preference options
   const modelPreferenceOptions: SelectOption[] = useMemo(() => {
     if (availableModels.length === 0) {
@@ -286,7 +305,7 @@ const MeshGenerationPanel: React.FC = () => {
     }
     return availableModels.map(model => ({
       value: model,
-      label: model.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      label: cleanModelName(model).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     }));
   }, [availableModels]);
 
@@ -336,26 +355,36 @@ const MeshGenerationPanel: React.FC = () => {
   }, [handleInputChange]);
 
   const validateForm = useCallback((): string | null => {
+    let errorMessage: string | null = null;
+    
     if (mode === 'text') {
       if (!formData.textPrompt.trim()) {
-        return 'Please enter a text prompt';
-      }
-      if (formData.textPrompt.length < 3) {
-        return 'Text prompt must be at least 3 characters long';
+        errorMessage = 'Please enter a text prompt';
+      } else if (formData.textPrompt.length < 3) {
+        errorMessage = 'Text prompt must be at least 3 characters long';
       }
     } else {
       if (!formData.imageFile) {
-        return 'Please select an image file';
-      }
-      if (!formData.imageFile.type.startsWith('image/')) {
-        return 'Please select a valid image file';
-      }
-      if (formData.imageFile.size > 50 * 1024 * 1024) { // 50MB limit from API docs
-        return 'Image file must be smaller than 50MB';
+        errorMessage = 'Please select an image file';
+      } else if (!formData.imageFile.type.startsWith('image/')) {
+        errorMessage = 'Please select a valid image file';
+      } else if (formData.imageFile.size > 50 * 1024 * 1024) { // 50MB limit from API docs
+        errorMessage = 'Image file must be smaller than 50MB';
       }
     }
-    return null;
-  }, [mode, formData]);
+    
+    // Show notification for validation errors
+    if (errorMessage) {
+      addNotification({
+        type: 'warning',
+        title: 'Invalid Input',
+        message: errorMessage,
+        duration: 4000,
+      });
+    }
+    
+    return errorMessage;
+  }, [mode, formData, addNotification]);
 
   const handleGenerate = useCallback(async () => {
     const validationError = validateForm();
@@ -640,6 +669,15 @@ const MeshGenerationPanel: React.FC = () => {
               <> Reason: {features[mode === 'text' ? 'text-to-mesh' : 'image-to-mesh']?.error}</>
             )}
           </WarningBox>
+        </FormSection>
+      )}
+
+      {!featuresLoading && currentFeatureAvailable && partPackerAvailable && (
+        <FormSection>
+          <InfoBox>
+            <span style={{ fontSize: '16px' }}>✨</span>
+            PartPacker model is available! It supports Part-Level mesh generation.
+          </InfoBox>
         </FormSection>
       )}
 
