@@ -412,7 +412,8 @@ const MeshPaintingPanel: React.FC = () => {
               id: formData.uploadedImageId || `ref-${Date.now()}`,
               name: formData.referenceImage.name,
               type: formData.referenceImage.type,
-              size: formData.referenceImage.size
+              size: formData.referenceImage.size,
+              url: URL.createObjectURL(formData.referenceImage) // Store blob URL for thumbnail
             }] : [])
           ],
           parameters: {

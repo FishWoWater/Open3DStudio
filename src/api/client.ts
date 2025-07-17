@@ -391,6 +391,22 @@ class ApiClient {
     }
   }
 
+  /**
+   * Fast health check with minimal timeout and retries for app initialization
+   */
+  async quickHealthCheck(): Promise<boolean> {
+    try {
+      // Create a quick health check with minimal timeout and no retries
+      const response = await this.client.get<HealthStatus>('/health', {
+        timeout: 5000, // 5 second timeout
+        // No retry wrapper - fail fast
+      });
+      return response.data.status === 'healthy';
+    } catch (error) {
+      return false;
+    }
+  }
+
   getConfig(): ApiConfig {
     return { ...this.config };
   }

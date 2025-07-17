@@ -434,6 +434,8 @@ export class MaterialManager {
     originalMaterials?: (THREE.Material | THREE.Material[])[],
     config?: ModelMaterial
   ): void {
+    console.log('[Skeleton Mode] Applying skeleton visualization:', skeletonData);
+    
     // First, make all meshes transparent
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -450,9 +452,16 @@ export class MaterialManager {
       }
     });
 
+    // Clear any existing skeleton helpers first
+    this.clearSkeletonHelpers(object);
+
     // Add skeleton visualization if bones are available
     if (skeletonData.bones && skeletonData.bones.length > 0) {
+      console.log(`[Skeleton Mode] Found ${skeletonData.bones.length} bones:`, 
+        skeletonData.bones.map((b: any) => b.name || b.bone?.name || 'unnamed'));
       this.addSkeletonHelpers(object, skeletonData.bones);
+    } else {
+      console.warn('[Skeleton Mode] No bones found in skeleton data');
     }
   }
 
@@ -463,8 +472,16 @@ export class MaterialManager {
     // Remove existing skeleton helpers
     this.clearSkeletonHelpers(object);
 
-    bones.forEach((bone, index) => {
-      if (!bone.position) return;
+    if (!bones || bones.length === 0) return;
+
+    bones.forEach((boneData, index) => {
+      // Handle both old format (direct bone objects) and new format (bone data objects)
+      const bone = boneData.bone || boneData;
+      const worldPosition = boneData.worldPosition || boneData.position;
+      const name = boneData.name || bone.name || `Bone_${index}`;
+      const parent = boneData.parent || (bone.parent && (bone.parent.type === 'Bone' || bone.parent.isBone) ? bone.parent : null);
+
+      if (!worldPosition) return;
 
       // Create bone joint sphere
       const jointGeometry = new THREE.SphereGeometry(0.05, 8, 8);
@@ -476,26 +493,42 @@ export class MaterialManager {
       });
       const jointSphere = new THREE.Mesh(jointGeometry, jointMaterial);
       
-      // Position sphere at bone location
-      jointSphere.position.copy(bone.position);
+      // Convert world position to local position relative to the model object
+      const localPosition = new THREE.Vector3();
+      object.worldToLocal(localPosition.copy(worldPosition));
+      jointSphere.position.copy(localPosition);
       jointSphere.userData.isSkeletonHelper = true;
+      jointSphere.userData.boneName = name;
       object.add(jointSphere);
 
       // Create connection line to parent bone
-      if (bone.parent && bone.parent.position) {
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-          bone.position.clone(),
-          bone.parent.position.clone()
-        ]);
-        const lineMaterial = new THREE.LineBasicMaterial({ 
-          color: '#ffaa00',
-          depthTest: false,
-          transparent: true,
-          opacity: 0.7
-        });
-        const boneLine = new THREE.Line(lineGeometry, lineMaterial);
-        boneLine.userData.isSkeletonHelper = true;
-        object.add(boneLine);
+      if (parent) {
+        // Find parent bone data
+        const parentBoneData = bones.find(b => (b.bone || b) === parent);
+        if (parentBoneData) {
+          const parentWorldPosition = parentBoneData.worldPosition || parentBoneData.position;
+          if (parentWorldPosition) {
+            // Convert both positions to local space
+            const parentLocalPosition = new THREE.Vector3();
+            object.worldToLocal(parentLocalPosition.copy(parentWorldPosition));
+            
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+              localPosition,
+              parentLocalPosition
+            ]);
+            const lineMaterial = new THREE.LineBasicMaterial({ 
+              color: '#ffaa00',
+              depthTest: false,
+              transparent: true,
+              opacity: 0.7
+            });
+            const boneLine = new THREE.Line(lineGeometry, lineMaterial);
+            boneLine.userData.isSkeletonHelper = true;
+            boneLine.userData.connectionFrom = name;
+            boneLine.userData.connectionTo = parentBoneData.name || parent.name;
+            object.add(boneLine);
+          }
+        }
       }
     });
   }

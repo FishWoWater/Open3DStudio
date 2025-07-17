@@ -168,8 +168,8 @@ const useApiInitialization = () => {
           retries: 3
         });
 
-        // Test connection
-        const isConnected = await apiClient.checkConnection();
+        // Test connection with fast health check (5 second timeout, no retries)
+        const isConnected = await apiClient.quickHealthCheck();
         
         updateSystemStatus({
           isOnline: isConnected
@@ -183,7 +183,7 @@ const useApiInitialization = () => {
             duration: 3000
           });
 
-          // Get initial system status
+          // Get initial system status with normal timeout/retry settings
           try {
             const systemStatus = await apiClient.getSystemStatus();
             updateSystemStatus({
@@ -204,7 +204,7 @@ const useApiInitialization = () => {
           addNotification({
             type: 'warning',
             title: 'API Connection Failed',
-            message: `Could not connect to ${settings.apiEndpoint}`,
+            message: `Could not connect to ${settings.apiEndpoint}. Check if the server is running.`,
             duration: 5000
           });
         }
@@ -223,7 +223,7 @@ const useApiInitialization = () => {
     };
 
     initializeApi();
-  }, [settings.apiEndpoint, settings.apiKey, updateSystemStatus, addNotification]);
+  }, [settings.apiEndpoint, settings.apiKey, updateSystemStatus, addNotification, initializeTasks]);
 
   return apiInitialized;
 };
