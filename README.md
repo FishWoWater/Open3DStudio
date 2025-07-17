@@ -1,8 +1,7 @@
 # Open3DStudio
 
-[![MIT License](https://img.shields.io/badge/license-Apache2.0-green.svg)](LICENSE)
-[![Cross-Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)](#)
-[![中文文档](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue)](README.zh-CN.md)
+[![Apache2.0 License](https://img.shields.io/badge/license-Apache2.0-green.svg)](LICENSE)
+[![Cross-Platform](https://img.shields.io/badge/platform-MacOS%20%7C%20Windows%20%7C%20Web-blue)](#)
 
 ---
 
