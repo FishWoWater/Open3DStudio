@@ -1,0 +1,5 @@
+In the current codebase I am implementing a 3DAIGC application and I have some bugs that need your fix.
+(1) when opening up the application (initializing 3D studio), seems that it will keep retrying for a long time if the backend server is NOT available, perhaps the timeout setup is too long for a single health check? or retry attempts are too many?
+(2) the task entry card @TaskCard incorrectly display the uploaded image in the mesh painting task @MeshPaintingPanel.tsx  , but it can display normally the uploaded image in image-conditioned mesh generation task, please figure out why and fix.
+(3) the display and overlay of the skeleton is incorrect when loading a customized GLB model with skeleton, please check and ensure that the skeleton loading and the skeleton visualizer is robust and correct. @addSkeletonHelpers() @Viewport.tsx 
+Make good plans before you begin, don't hold back and give it your all. 

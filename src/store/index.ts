@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import * as THREE from 'three';
 import { 
   AppState, 
   ModuleType, 
@@ -35,7 +36,7 @@ const defaultUIState: UIState = {
     width: 400
   },
   viewport: {
-    renderMode: 'solid',
+    renderMode: 'rendered',
     camera: {
       position: [5, 5, 5],
       target: [0, 0, 0],
@@ -869,15 +870,42 @@ export const useStore = create<StoreState>()(
       // Find bones and skinned meshes in the object hierarchy
       object3D.traverse((child: any) => {
         if (child.type === 'Bone' || child.isBone === true) {
-          bones.push(child);
+          // For bones found in the hierarchy, store both local and world positions
+          const boneData = {
+            bone: child,
+            name: child.name || `Bone_${bones.length}`,
+            position: child.position.clone(),
+            worldPosition: new THREE.Vector3(),
+            parent: child.parent && (child.parent.type === 'Bone' || child.parent.isBone) ? child.parent : null
+          };
+          
+          // Calculate world position
+          child.updateMatrixWorld(true);
+          child.getWorldPosition(boneData.worldPosition);
+          
+          bones.push(boneData);
         }
         if (child.type === 'SkinnedMesh' || child.isSkinnedMesh === true) {
           skinnedMeshes.push(child);
           if (child.skeleton && child.skeleton.bones) {
             // Add skeleton bones if not already included
             child.skeleton.bones.forEach((bone: any) => {
-              if (!bones.includes(bone)) {
-                bones.push(bone);
+              // Check if this bone is already in our list
+              const existingBone = bones.find(b => b.bone === bone);
+              if (!existingBone) {
+                const boneData = {
+                  bone: bone,
+                  name: bone.name || `SkeletonBone_${bones.length}`,
+                  position: bone.position.clone(),
+                  worldPosition: new THREE.Vector3(),
+                  parent: bone.parent && (bone.parent.type === 'Bone' || bone.parent.isBone) ? bone.parent : null
+                };
+                
+                // Calculate world position
+                bone.updateMatrixWorld(true);
+                bone.getWorldPosition(boneData.worldPosition);
+                
+                bones.push(boneData);
               }
             });
           }
