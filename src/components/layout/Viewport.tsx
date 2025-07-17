@@ -100,6 +100,33 @@ const TestDropdownItem = styled.button`
   }
 `;
 
+const UploadButton = styled.button`
+  background: ${props => props.theme.colors.primary[600]};
+  color: white;
+  border: none;
+  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  border-radius: ${props => props.theme.borderRadius.md};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
+  margin-left: ${props => props.theme.spacing.sm};
+  
+  &:hover {
+    background: ${props => props.theme.colors.primary[500]};
+  }
+  
+  &:disabled {
+    background: ${props => props.theme.colors.gray[400]};
+    cursor: not-allowed;
+  }
+`;
+
+const HiddenFileInput = styled.input`
+  display: none;
+`;
+
 const ViewportContent = styled.div`
   flex: 1;
   position: relative;
@@ -268,8 +295,121 @@ const Scene: React.FC = () => {
 
 const Viewport: React.FC = () => {
   const viewport = useViewport();
-  const { addModel, clearSelection } = useStoreActions();
+  const { addModel, clearSelection, addNotification } = useStoreActions();
   const [testDropdownOpen, setTestDropdownOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Dynamically import Three.js loaders
+      const THREE = await import('three');
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader');
+      const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader');
+      const { FBXLoader } = await import('three/examples/jsm/loaders/FBXLoader');
+      const { PLYLoader } = await import('three/examples/jsm/loaders/PLYLoader');
+
+      const url = URL.createObjectURL(file);
+      const format = file.name.split('.').pop()?.toLowerCase() || '';
+
+      let loader: any;
+      let object: any;
+      
+      switch (format) {
+        case 'glb':
+        case 'gltf':
+          loader = new GLTFLoader();
+          object = await new Promise((resolve, reject) => {
+            loader.load(url, (gltf: any) => resolve(gltf.scene), undefined, reject);
+          });
+          break;
+        case 'obj':
+          loader = new OBJLoader();
+          object = await new Promise((resolve, reject) => {
+            loader.load(url, (obj: any) => resolve(obj), undefined, reject);
+          });
+          break;
+        case 'fbx':
+          loader = new FBXLoader();
+          object = await new Promise((resolve, reject) => {
+            loader.load(url, (fbx: any) => resolve(fbx), undefined, reject);
+          });
+          break;
+        case 'ply':
+          loader = new PLYLoader();
+          object = await new Promise((resolve, reject) => {
+            loader.load(url, (geometry: any) => {
+              // Ensure geometry has proper normals for lighting
+              if (!geometry.attributes.normal) {
+                geometry.computeVertexNormals();
+              }
+              const material = new THREE.MeshLambertMaterial({ color: 0x888888 });
+              const mesh = new THREE.Mesh(geometry, material);
+              resolve(mesh);
+            }, undefined, reject);
+          });
+          break;
+        default:
+          throw new Error(`Unsupported format: ${format}. Supported formats: GLB, GLTF, OBJ, FBX, PLY`);
+      }
+
+      // Ensure all geometries have proper normals for lighting
+      object.traverse((child: any) => {
+        if (child instanceof THREE.Mesh && child.geometry) {
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+        }
+      });
+
+      // Add to scene via store
+      addModel({
+        id: `uploaded_${Date.now()}`,
+        name: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
+        url: '',
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visible: true,
+        selected: false,
+        metadata: { source: 'upload', fileName: file.name },
+        object3D: object
+      });
+
+      addNotification({
+        type: 'success',
+        title: 'Model Uploaded',
+        message: `${file.name} imported to scene successfully.`,
+        duration: 3000
+      });
+      
+      // Clean up the object URL
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      addNotification({
+        type: 'error',
+        title: 'Upload Failed',
+        message: err instanceof Error ? err.message : 'Failed to upload model',
+        duration: 4000
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const triggerFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const addTestModel = () => {
     try {
@@ -415,38 +555,52 @@ const Viewport: React.FC = () => {
           <span className="separator">•</span>
           <span>Render: {viewport.renderMode}</span>
         </ViewportInfo>
-        <TestDropdown>
-          <TestMainButton onClick={() => setTestDropdownOpen(!testDropdownOpen)}>
-            Test Models
-            <i className={`fas fa-chevron-${testDropdownOpen ? 'up' : 'down'}`}></i>
-          </TestMainButton>
-          <TestDropdownMenu isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>
-            <TestDropdownItem onClick={(e) => { 
-              e.preventDefault(); 
-              e.stopPropagation(); 
-              addTestModel(); 
-              setTestDropdownOpen(false); 
-            }}>
-              Simple Cube
-            </TestDropdownItem>
-            <TestDropdownItem onClick={(e) => { 
-              e.preventDefault(); 
-              e.stopPropagation(); 
-              addTestGLBModel(); 
-              setTestDropdownOpen(false); 
-            }}>
-              Parts Model
-            </TestDropdownItem>
-            <TestDropdownItem onClick={(e) => { 
-              e.preventDefault(); 
-              e.stopPropagation(); 
-              addTestSkeletonModel(); 
-              setTestDropdownOpen(false); 
-            }}>
-              Skeleton Model
-            </TestDropdownItem>
-          </TestDropdownMenu>
-        </TestDropdown>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <TestDropdown>
+            <TestMainButton onClick={() => setTestDropdownOpen(!testDropdownOpen)}>
+              Test Models
+              <i className={`fas fa-chevron-${testDropdownOpen ? 'up' : 'down'}`}></i>
+            </TestMainButton>
+            <TestDropdownMenu isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>
+              <TestDropdownItem onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                addTestModel(); 
+                setTestDropdownOpen(false); 
+              }}>
+                Simple Cube
+              </TestDropdownItem>
+              <TestDropdownItem onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                addTestGLBModel(); 
+                setTestDropdownOpen(false); 
+              }}>
+                Parts Model
+              </TestDropdownItem>
+              <TestDropdownItem onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                addTestSkeletonModel(); 
+                setTestDropdownOpen(false); 
+              }}>
+                Skeleton Model
+              </TestDropdownItem>
+            </TestDropdownMenu>
+          </TestDropdown>
+          
+          <UploadButton onClick={triggerFileUpload} disabled={isUploading}>
+            <i className="fas fa-upload"></i>
+            {isUploading ? 'Uploading...' : 'Upload Model'}
+          </UploadButton>
+          
+          <HiddenFileInput
+            ref={fileInputRef}
+            type="file"
+            accept=".glb,.gltf,.obj,.fbx,.ply"
+            onChange={handleFileUpload}
+          />
+        </div>
       </ViewportHeader>
       
       <ViewportContent>
