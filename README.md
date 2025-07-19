@@ -10,7 +10,7 @@ The supported workflows include text-to-3d, image-to-3d, mesh segmentation, text
 ## Demo 
 You can have a try on [Vercel Deployment]() or download the shipped applications from [Releases]().<br>
  Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180). <br>
- The below video demo shows a section-by-section example of Open3DStudio, you may also check out the comprehensive guide [here]().
+ The below video demo shows a section-by-section example of Open3DStudio, you may also check out the comprehensive guide [here](https://www.youtube.com/watch?v=y8ydZeZnPjM).
 
 ![Demo](assets/demo.gif)
 
