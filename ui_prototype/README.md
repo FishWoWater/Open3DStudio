@@ -1,4 +1,4 @@
-# Minimal 3D AI Studio - UI Prototype
+# Open 3D AI Studio - UI Prototype
 
 A modern, elegant UI prototype for a cross-platform 3D AIGC (AI Generated Content) application 
 

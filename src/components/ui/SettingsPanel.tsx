@@ -221,7 +221,20 @@ const SettingsPanel: React.FC = () => {
   };
 
   const handleSave = () => {
+    // Check if API endpoint has changed
+    const apiEndpointChanged = formData.apiEndpoint !== settings.apiEndpoint;
+    
     updateSettings(formData);
+    
+    if (apiEndpointChanged) {
+      addNotification({
+        type: 'info',
+        title: 'API Endpoint Updated',
+        message: 'Refreshing connection status with new endpoint...',
+        duration: 4000
+      });
+    }
+    
     addNotification({
       type: 'success',
       title: 'Settings Saved',

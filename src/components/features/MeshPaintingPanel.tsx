@@ -355,6 +355,8 @@ const MeshPaintingPanel: React.FC = () => {
           model_preference: formData.modelPreference
         };
 
+        console.log("sending mesh painting request", request);
+
         response = await apiClient.textMeshPainting(request);
         taskType = 'text-mesh-painting' as TaskType;
       } else {
