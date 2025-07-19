@@ -27,3 +27,5 @@ setup-icons.sh
 legacy
 # packaged application
 dist
+build-assets 
+scripts

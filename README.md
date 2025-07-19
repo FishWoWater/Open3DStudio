@@ -2,9 +2,15 @@
 
 [![Apache2.0 License](https://img.shields.io/badge/license-Apache2.0-green.svg)](LICENSE)
 [![Cross-Platform](https://img.shields.io/badge/platform-MacOS%20%7C%20Windows%20%7C%20Web-blue)](#)
-[![中文文档](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue)](README.zh-CN.md)
 
-**Open3DStudio** is a 3D AIGC (AI Generated Content) application. It works closely with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) to provide **completely locally deployed** and **free** 3DAIGC workflows, covering tasks like text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion etc.
+**Open3DStudio** is a 3D AIGC application. It works closely with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) to provide **completely locally deployed** and **free** 3DAIGC workflows. Basically it's an advanced version of the  **[Minimal3DStudio](https://github.com/FishWoWater/Minimal3DStudio)** and much like a **replicate of [TripoStudio](https://studio.tripo3d.ai/home?lng=en)**.
+
+The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion etc.
+
+## Demo 
+You can have a try on [Vercel Deployment]() or download the shipped applications from [Releases]().<br>
+ Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180). <br>
+ The below video demo shows a section-by-section example of Open3DStudio, you may also check out the comprehensive guide [here]().
 
 ![Demo](assets/demo.gif)
 
@@ -15,18 +21,11 @@
 
 
 ## 🧩 Supported 3DAIGC Modules
-* Mesh Generation
-    * text-conditioned mesh generation 
-    * image-conditioned mesh generation
-* Mesh Painting
-    * text-conditioned texture generation 
-    * image-conditioned texture generation
+* Mesh Generation: text / image conditioned
+* Mesh Painting: text / image conditioned 
 * Mesh Segmentation
-    * segment a uploaded mesh to different parts
 * Part Completion
-    * completes a part-level mesh 
 * Auto Rigging
-    * generate the skeleton or/and the skin weights
 
 The available models are up to the API backend, refer to [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) for the example model matrix
 
@@ -35,7 +34,7 @@ The available models are up to the API backend, refer to [3DAIGC-API](https://gi
 - Task management with progress and history
 - Multi-format support: GLB, OBJ, FBX etc.
 - File uploading: uploading images / meshes for later processing
-- No internet required for any feature
+- All locally deployed, it's scalable and easy to add a feature/model both at the frontend and backend
 
 
 ## 🛠️ Quick Start
@@ -49,9 +48,14 @@ npm run dev
 
 # build the app and ship it for specific platform 
 npm run build 
-npm run pack-mac
+npm run dist-mac
+npm run dist-win
 ```
 
+
 ## 📄 License
-[Apache2.0 License](LICENSE)
+The code and application is licensed under [Apache2.0 License](LICENSE).
+
+## Acknowledgement
+
 

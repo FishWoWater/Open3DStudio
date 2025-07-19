@@ -1,5 +1,5 @@
 {
-  "name": "minimal-3d-studio",
+  "name": "open-3d-studio",
   "version": "0.1.0",
   "private": true,
   "description": "Cross-platform 3D AIGC studio built with React and Electron",
@@ -48,8 +48,10 @@
     "copy-electron-files": "cp public/electron.js build/electron.js && cp public/preload.js build/preload.js",
     "build-electron": "npm run build && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",
+    "icons": "chmod +x scripts/generate-icons.sh && ./scripts/generate-icons.sh",
     "dist-mac": "npm run build && electron-builder --mac --publish=never",
-    "pack-mac": "npm run dist-mac && echo '\n✅ macOS builds completed successfully!' && echo '📦 Find your app at:' && echo '   • dist/Minimal 3D Studio-0.1.0.dmg (Intel Mac)' && echo '   • dist/Minimal 3D Studio-0.1.0-arm64.dmg (Apple Silicon)'"
+    "dist-win": "npm run build && electron-builder --win --publish=never",
+    "pack-mac": "npm run dist-mac && echo '\n✅ macOS builds completed successfully!' && echo '📦 Find your app at:' && echo '   • dist/Open 3D Studio-0.1.0.dmg (Intel Mac)' && echo '   • dist/Open 3D Studio-0.1.0-arm64.dmg (Apple Silicon)'"
   },
   "eslintConfig": {
     "extends": [
@@ -70,10 +72,11 @@
     ]
   },
   "build": {
-    "appId": "com.minimal3dstudio.app",
-    "productName": "Minimal 3D Studio",
+    "appId": "com.open3dstudio.app",
+    "productName": "Open 3D Studio",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build-assets"
     },
     "files": [
       "build/**/*",
@@ -87,7 +90,7 @@
       "!node_modules/**/yarn.lock"
     ],
     "mac": {
-      "icon": "build/icon.icns",
+      "icon": "build-assets/icon.icns",
       "category": "public.app-category.graphics-design",
       "target": [
         {
@@ -102,11 +105,11 @@
       "entitlementsInherit": null
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "build-assets/icon.ico",
       "target": "nsis"
     },
     "linux": {
-      "icon": "build/icon.png",
+      "icon": "build-assets/icon.png",
       "target": "AppImage"
     },
     "compression": "normal",

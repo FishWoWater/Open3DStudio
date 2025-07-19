@@ -146,7 +146,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
     <TopBarContainer isElectronMacOS={isElectronMacOS}>
       <Logo>
         <i className="fas fa-cube"></i>
-        <span>Minimal 3D Studio</span>
+        <span>Open 3D Studio</span>
       </Logo>
       
       <MainNav>
@@ -171,7 +171,7 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
         </ActionButton> */}
         <ActionButton 
           title="View on GitHub" 
-          onClick={() => window.open('https://github.com/FishWoWater/Minimal3DStudio', '_blank')}
+          onClick={() => window.open('https://github.com/FishWoWater/Open3DStudio', '_blank')}
         >
           <i className="fab fa-github"></i>
         </ActionButton>

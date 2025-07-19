@@ -29,6 +29,26 @@ const defaultSettings: AppSettings = {
   language: 'en'
 };
 
+// Initialize settings from localStorage or defaults
+const initializeSettings = (): AppSettings => {
+  try {
+    // Dynamically import the settings persistence service
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const { settingsPersistence } = require('../services/settingsPersistence');
+      const savedSettings = settingsPersistence.loadSettings();
+      
+      if (savedSettings) {
+        // Merge saved settings with defaults to ensure all required fields exist
+        return { ...defaultSettings, ...savedSettings };
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load saved settings, using defaults:', error);
+  }
+  
+  return defaultSettings;
+};
+
 const defaultUIState: UIState = {
   sidebar: {
     leftCollapsed: false,
@@ -96,7 +116,7 @@ const defaultState: AppState = {
   currentFeature: 'text-to-mesh',
   isLoading: false,
   error: null,
-  settings: defaultSettings,
+  settings: initializeSettings(),
   tasks: defaultTaskState,
   ui: defaultUIState,
   system: defaultSystemState
@@ -216,13 +236,33 @@ export const useStore = create<StoreState>()(
 
     // Settings actions
     updateSettings: (settings: Partial<AppSettings>) => {
-      set((state) => ({
-        settings: { ...state.settings, ...settings }
-      }));
+      set((state) => {
+        const newSettings = { ...state.settings, ...settings };
+        
+        // Save to localStorage
+        try {
+          import('../services/settingsPersistence').then(({ settingsPersistence }) => {
+            settingsPersistence.saveSettings(newSettings);
+          });
+        } catch (error) {
+          console.error('Failed to save settings:', error);
+        }
+        
+        return { settings: newSettings };
+      });
     },
 
     resetSettings: () => {
       set({ settings: defaultSettings });
+      
+      // Save to localStorage
+      try {
+        import('../services/settingsPersistence').then(({ settingsPersistence }) => {
+          settingsPersistence.saveSettings(defaultSettings);
+        });
+      } catch (error) {
+        console.error('Failed to save reset settings:', error);
+      }
     },
 
     // Task actions

@@ -1,4 +1,4 @@
-# Copilot Instructions for Minimal 3D Studio
+# Copilot Instructions for Open 3D Studio
 
 ## Project Overview
 Cross-platform 3D AIGC (AI Generated Content) studio built with React, Electron, and Three.js. Provides AI-powered 3D model generation, editing, and manipulation tools with real-time 3D viewport and background task processing.
