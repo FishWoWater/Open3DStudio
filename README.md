@@ -8,8 +8,10 @@
 The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion etc.
 
 ## Demo 
-You can have a try on [Vercel Deployment]() or download the shipped applications from [Releases]().<br>
- Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180). <br>
+You can have a try on [Vercel Deployment](https://open3dstudio-n5hap1p9y-fishwowaters-projects.vercel.app) or download the shipped applications from [Releases](https://github.com/FishWoWater/Open3DStudio/releases).
+
+ Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180).
+
  The below video demo shows a section-by-section example of Open3DStudio, you may also check out the comprehensive guide [here](https://www.youtube.com/watch?v=y8ydZeZnPjM).
 
 ![Demo](assets/demo.gif)
@@ -52,10 +54,10 @@ npm run dist-mac
 npm run dist-win
 ```
 
+## Vibe Coding 
+Check out [Vibe Coding Prompts](./docs/vibe_coding/) for the whole developing progress.
+
 
 ## 📄 License
 The code and application is licensed under [Apache2.0 License](LICENSE).
-
-## Acknowledgement
-
 
