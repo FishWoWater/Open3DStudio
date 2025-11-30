@@ -29,3 +29,5 @@ legacy
 dist
 build-assets 
 scripts
+
+dev_history/

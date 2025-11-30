@@ -1,4 +1,4 @@
-import { JobStatus, OutputFormat, JobInfo, SystemStatus } from './api';
+import { JobStatus, OutputFormat, JobInfo, SystemStatus, AuthStatus, UserInfo } from './api';
 
 // Application State Types
 export interface AppState {
@@ -10,6 +10,16 @@ export interface AppState {
   tasks: TaskState;
   ui: UIState;
   system: SystemState;
+  auth: AuthState;
+}
+
+// Authentication State Types
+export interface AuthState {
+  isAuthenticated: boolean;
+  token: string | null;
+  user: UserInfo | null;
+  authStatus: AuthStatus | null;
+  isCheckingAuth: boolean;
 }
 
 // Module Types
@@ -18,7 +28,9 @@ export type ModuleType =
   | 'mesh-painting' 
   | 'mesh-segmentation' 
   | 'part-completion' 
-  | 'auto-rigging';
+  | 'auto-rigging'
+  | 'mesh-retopology'
+  | 'mesh-uv-unwrapping';
 
 export interface ModuleConfig {
   id: ModuleType;
@@ -82,7 +94,9 @@ export type TaskType =
   | 'image-mesh-painting'
   | 'mesh-segmentation'
   | 'part-completion'
-  | 'auto-rigging';
+  | 'auto-rigging'
+  | 'mesh-retopology'
+  | 'mesh-uv-unwrapping';
 
 export interface TaskInputData {
   textPrompt?: string;
@@ -117,6 +131,7 @@ export interface UIState {
   modal: ModalState;
   notifications: Notification[];
   dragAndDrop: DragDropState;
+  taskResultAsInput: string | null; // Task ID whose result should be used as input
 }
 
 export interface SidebarState {
@@ -138,6 +153,7 @@ export interface ViewportState {
   gizmoVisible: boolean;
   snapToGrid: boolean;
   gridSize: number;
+  doubleSided: boolean;
 }
 
 export type RenderMode = 'solid' | 'wireframe' | 'rendered' | 'material' | 'parts' | 'skeleton';
@@ -221,6 +237,7 @@ export type ModalType =
   | 'task-details'
   | 'file-upload'
   | 'model-viewer'
+  | 'uv-viewer'
   | 'about'
   | 'error';
 

@@ -8,6 +8,15 @@ This API provides scalable 3D AI model inference capabilities with VRAM-aware sc
 **API Version**: v1
 **Documentation**: `/docs` (Swagger UI) or `/redoc` (ReDoc)
 
+## Authentication (Optional)
+
+User authentication is **optional** and controlled by the `user_auth_enabled` flag:
+
+- **When disabled (default)**: No authentication required, all users see all jobs
+- **When enabled**: Token-based authentication required, users only see their own jobs
+
+See [User Management Endpoints](#user-management-endpoints-optional) for registration and login.
+
 ## File Upload System
 
 The API supports file uploads for images and meshes, returning unique file IDs that can be used in subsequent API calls. Files are automatically cleaned up after 24 hours.
@@ -368,6 +377,135 @@ All API responses follow a consistent format:
 }
 ```
 
+## User Management Endpoints (Optional)
+
+These endpoints are available when user authentication is enabled (`user_auth_enabled: true`).
+
+### Register User
+- **URL**: `/api/v1/users/register`
+- **Method**: `POST`
+- **Description**: Register a new user account
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "username": "john",
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "User registered successfully. Please login to get an API token.",
+  "user": {
+    "user_id": "user_abc123",
+    "username": "john",
+    "email": "john@example.com",
+    "role": "user"
+  }
+}
+```
+
+### Login
+- **URL**: `/api/v1/users/login`
+- **Method**: `POST`
+- **Description**: Login and receive an API token
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "username": "john",
+  "password": "secret123"
+}
+```
+- **Response**:
+```json
+{
+  "user": {...},
+  "token": "abc123xyz789...",
+  "token_name": "Login token - john",
+  "message": "Login successful. Use this token in Authorization header."
+}
+```
+
+### Get Current User Profile
+- **URL**: `/api/v1/users/me`
+- **Method**: `GET`
+- **Description**: Get profile of authenticated user
+- **Authentication**: Required (Bearer token)
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+```json
+{
+  "success": true,
+  "user": {
+    "user_id": "user_abc123",
+    "username": "john",
+    "email": "john@example.com",
+    "role": "user"
+  }
+}
+```
+
+### Change Password
+- **URL**: `/api/v1/users/me/password`
+- **Method**: `PUT`
+- **Description**: Change user password
+- **Authentication**: Required (Bearer token)
+- **Request Body**:
+```json
+{
+  "old_password": "secret123",
+  "new_password": "newsecret456"
+}
+```
+
+### List User's API Tokens
+- **URL**: `/api/v1/users/tokens`
+- **Method**: `GET`
+- **Description**: List all tokens for current user
+- **Authentication**: Required (Bearer token)
+
+### Create New API Token
+- **URL**: `/api/v1/users/tokens`
+- **Method**: `POST`
+- **Description**: Create a new API token
+- **Authentication**: Required (Bearer token)
+- **Request Body**:
+```json
+{
+  "token_name": "My App Token",
+  "expires_in_days": 365
+}
+```
+
+### Usage Example with Authentication
+```bash
+# 1. Register
+curl -X POST "http://localhost:7842/api/v1/users/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","email":"alice@example.com","password":"secret123"}'
+
+# 2. Login and get token
+TOKEN=$(curl -s -X POST "http://localhost:7842/api/v1/users/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"secret123"}' | jq -r '.token')
+
+# 3. Submit job with authentication
+curl -X POST "http://localhost:7842/api/v1/mesh-generation/text-to-raw-mesh" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text_prompt":"a 3d cat","output_format":"glb"}'
+
+# 4. Get job status (only your jobs visible)
+curl -X GET "http://localhost:7842/api/v1/system/jobs/{job_id}" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
 ## File Upload Endpoints
 
 ### Upload Image
@@ -439,7 +577,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/text-to-raw-mesh`
 - **Method**: `POST`
 - **Description**: Generate a 3D mesh from text description
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -461,7 +599,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/text-to-textured-mesh`
 - **Method**: `POST`
 - **Description**: Generate a textured 3D mesh from text description
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -500,7 +638,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/text-mesh-painting`
 - **Method**: `POST`
 - **Description**: Apply texture to an existing mesh using text description
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -530,7 +668,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/image-to-raw-mesh`
 - **Method**: `POST`
 - **Description**: Generate a 3D mesh from an image
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -558,7 +696,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/image-to-textured-mesh`
 - **Method**: `POST`
 - **Description**: Generate a textured 3D mesh from an image
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -590,7 +728,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/image-mesh-painting`
 - **Method**: `POST`
 - **Description**: Apply texture to an existing mesh using an image
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -622,7 +760,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-generation/part-completion`
 - **Method**: `POST`
 - **Description**: Complete missing parts of a 3D mesh
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -679,7 +817,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/mesh-segmentation/segment-mesh`
 - **Method**: `POST`
 - **Description**: Segment a 3D mesh into semantic parts
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -729,7 +867,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/auto-rigging/generate-rig`
 - **Method**: `POST`
 - **Description**: Generate bone structure for a 3D mesh
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**:
 ```json
 {
@@ -760,7 +898,7 @@ All API responses follow a consistent format:
 - **URL**: `/api/v1/auto-rigging/upload-mesh`
 - **Method**: `POST`
 - **Description**: Upload a mesh file for auto-rigging
-- **Authentication**: None required
+- **Authentication**: Required if user_auth_enabled is true
 - **Request Body**: `multipart/form-data`
   - `file`: Mesh file (OBJ, GLB, FBX)
 - **Response**:
@@ -783,6 +921,240 @@ All API responses follow a consistent format:
 {
   "input_formats": ["obj", "glb", "fbx"],
   "output_formats": ["fbx", "glb"]
+}
+```
+
+---
+
+## Mesh Retopology Endpoints
+
+### Retopologize Mesh
+- **URL**: `/api/v1/mesh-retopology/retopologize-mesh`
+- **Method**: `POST`
+- **Description**: Optimize mesh topology by reducing polygon count while preserving shape
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "mesh_path": "/path/to/mesh.obj",
+  "mesh_file_id": null,
+  "target_vertex_count": null,
+  "output_format": "obj",
+  "seed": 42,
+  "model_preference": "fastmesh_v1k_retopology"
+}
+```
+- **File Input Options**: Provide **one** of the following:
+  - `mesh_path`: Local file path (for server-side files)
+  - `mesh_file_id`: File ID from upload endpoint (**recommended**)
+- **Parameters**:
+  - `target_vertex_count` (optional): Override default vertex count target
+  - `output_format`: Output format (`obj`, `glb`, or `ply`)
+  - `seed` (optional): Random seed for reproducibility
+  - `model_preference`: Model variant to use:
+    - `fastmesh_v1k_retopology`: ~1000 vertices (faster, lower detail)
+    - `fastmesh_v4k_retopology`: ~4000 vertices (slower, higher detail)
+- **Response**:
+```json
+{
+  "job_id": "job_123456",
+  "status": "queued",
+  "message": "Mesh retopology job queued successfully"
+}
+```
+- **Completed Job Result**: When job is complete, includes:
+```json
+{
+  "output_mesh_path": "/outputs/meshes/retopo_mesh_123456.obj",
+  "original_stats": {
+    "vertices": 150000,
+    "faces": 300000
+  },
+  "output_stats": {
+    "vertices": 1024,
+    "faces": 2048
+  },
+  "retopology_info": {
+    "model": "fastmesh_v1k_retopology",
+    "variant": "V1K",
+    "vertex_reduction": "99.3%",
+    "face_reduction": "99.3%",
+    "seed": 42
+  }
+}
+```
+
+### Get Retopology Available Models
+- **URL**: `/api/v1/mesh-retopology/available-models`
+- **Method**: `GET`
+- **Description**: Get available retopology models and their specifications
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "available_models": ["fastmesh_v1k_retopology", "fastmesh_v4k_retopology"],
+  "models_details": {
+    "fastmesh_v1k_retopology": {
+      "description": "FastMesh V1K - Generates meshes with ~1000 vertices",
+      "target_vertices": 1000,
+    },
+    "fastmesh_v4k_retopology": {
+      "description": "FastMesh V4K - Generates meshes with ~4000 vertices",
+      "target_vertices": 4000,
+    }
+  }
+}
+```
+
+### Get Mesh Retopology Supported Formats
+- **URL**: `/api/v1/mesh-retopology/supported-formats`
+- **Method**: `GET`
+- **Description**: Get supported formats for mesh retopology
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "input_formats": ["obj", "glb", "ply", "stl"],
+  "output_formats": ["obj", "glb", "ply"]
+}
+```
+
+---
+
+## UV Unwrapping Endpoints
+
+### Unwrap Mesh UV
+- **URL**: `/api/v1/mesh-uv-unwrapping/unwrap-mesh`
+- **Method**: `POST`
+- **Description**: Generate optimized UV coordinates for a 3D mesh using part-based unwrapping
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "mesh_path": "/path/to/mesh.obj",
+  "mesh_file_id": null,
+  "distortion_threshold": 1.25,
+  "pack_method": "blender",
+  "save_individual_parts": true,
+  "save_visuals": false,
+  "output_format": "obj",
+  "model_preference": "partuv_uv_unwrapping"
+}
+```
+- **File Input Options**: Provide **one** of the following:
+  - `mesh_path`: Local file path (for server-side files)
+  - `mesh_file_id`: File ID from upload endpoint (**recommended**)
+- **Parameters**:
+  - `distortion_threshold`: Maximum allowed distortion (1.0-5.0, default: 1.25)
+    - Lower values = less distortion but more UV seams
+    - Higher values = more distortion but fewer UV seams
+  - `pack_method`: UV packing method
+    - `blender`: Default packing using bpy (fast, good quality)
+    - `uvpackmaster`: Professional packing with part grouping (requires add-on)
+    - `none`: No packing, charts arranged in grid (fastest)
+  - `save_individual_parts`: Save individual part meshes separately (default: true)
+  - `save_visuals`: Save visualization images (default: false)
+  - `output_format`: Output format (`obj` or `glb`)
+  - `model_preference`: Model to use (currently only `partuv_uv_unwrapping`)
+- **Response**:
+```json
+{
+  "job_id": "job_123456",
+  "status": "queued",
+  "message": "Mesh UV unwrapping job queued successfully"
+}
+```
+- **Completed Job Result**: When job is complete, includes:
+```json
+{
+  "output_mesh_path": "/outputs/partuv/mesh_uv_123456/final_components.obj",
+  "packed_mesh_path": "/outputs/partuv/mesh_uv_123456/final_packed.obj",
+  "individual_parts_dir": "/outputs/partuv/mesh_uv_123456/individual_parts",
+  "num_components": 24,
+  "distortion": 1.18,
+  "uv_info": {
+    "model": "partuv_uv_unwrapping",
+    "num_uv_components": 24,
+    "num_parts": 8,
+    "final_distortion": 1.18,
+    "distortion_threshold": 1.25,
+    "pack_method": "blender",
+    "components_info": [
+      {
+        "chart_id": 0,
+        "num_faces": 152,
+        "distortion": 1.05
+      }
+    ]
+  }
+}
+```
+
+### Get UV Unwrapping Pack Methods
+- **URL**: `/api/v1/mesh-uv-unwrapping/pack-methods`
+- **Method**: `GET`
+- **Description**: Get available UV packing methods with descriptions
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "pack_methods": {
+    "blender": {
+      "description": "Default packing method using bpy",
+      "requirements": "bpy (installed automatically)",
+      "speed": "fast",
+      "features": []
+    },
+    "uvpackmaster": {
+      "description": "Professional packing with part grouping support",
+      "requirements": "UVPackMaster add-on (paid, requires separate installation)",
+      "speed": "medium",
+      "features": ["Part-based packing", "Multi-atlas support"]
+    },
+    "none": {
+      "description": "No packing - outputs unwrapped UV charts without arrangement",
+      "requirements": "None",
+      "speed": "fastest",
+      "features": []
+    }
+  }
+}
+```
+
+### Get UV Unwrapping Available Models
+- **URL**: `/api/v1/mesh-uv-unwrapping/available-models`
+- **Method**: `GET`
+- **Description**: Get available UV unwrapping models and their specifications
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "available_models": ["partuv_uv_unwrapping"],
+  "models_details": {
+    "partuv_uv_unwrapping": {
+      "description": "PartUV - Part-based UV unwrapping with minimal distortion",
+      "method": "Hierarchical part-based unwrapping",
+      "features": [
+        "Automatic part segmentation",
+        "Distortion minimization",
+        "Multiple packing options"
+      ],
+      "recommended_for": "General purpose, production assets"
+    }
+  }
+}
+```
+
+### Get UV Unwrapping Supported Formats
+- **URL**: `/api/v1/mesh-uv-unwrapping/supported-formats`
+- **Method**: `GET`
+- **Description**: Get supported formats for UV unwrapping
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "input_formats": ["obj", "glb"],
+  "output_formats": ["obj"]
 }
 ```
 

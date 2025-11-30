@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { useCurrentModule, useStoreActions } from '../../store';
+import { useCurrentModule, useStoreActions, useStore } from '../../store';
 import { ModuleType } from '../../types/state';
 
 // Detect if running in Electron and platform
@@ -92,6 +92,30 @@ const NavItem = styled.button<{ active: boolean }>`
 const HeaderActions = styled.div`
   display: flex;
   gap: ${props => props.theme.spacing.sm};
+  align-items: center;
+`;
+
+const UserInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+  padding: 6px 12px;
+  background: ${props => props.theme.colors.background.tertiary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+`;
+
+const UserName = styled.span`
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  color: ${props => props.theme.colors.text.primary};
+  font-weight: ${props => props.theme.typography.fontWeight.medium};
+`;
+
+const UserBadge = styled.div`
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: ${props => props.theme.colors.success};
 `;
 
 const ActionButton = styled.button`
@@ -119,16 +143,19 @@ interface TopBarProps {
 }
 
 const modules: { id: ModuleType; name: string; icon: string }[] = [
-  { id: 'mesh-generation', name: 'Mesh Generation', icon: 'fas fa-shapes' },
-  { id: 'mesh-painting', name: 'Mesh Painting', icon: 'fas fa-paint-brush' },
+  { id: 'mesh-generation', name: 'MeshGen', icon: 'fas fa-shapes' },
+  { id: 'mesh-retopology', name: 'LowPoly Retopo', icon: 'fas fa-project-diagram' },
+  { id: 'mesh-uv-unwrapping', name: 'UV Unwrap', icon: 'fas fa-map' },
+  { id: 'mesh-painting', name: 'TextureGen', icon: 'fas fa-paint-brush' },
   { id: 'mesh-segmentation', name: 'Mesh Segmentation', icon: 'fas fa-cut' },
   { id: 'part-completion', name: 'Part Completion', icon: 'fas fa-puzzle-piece' },
-  { id: 'auto-rigging', name: 'Auto Rigging', icon: 'fas fa-sitemap' }
+  { id: 'auto-rigging', name: 'Auto Rig', icon: 'fas fa-sitemap' },
 ];
 
 const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
   const currentModule = useCurrentModule();
-  const { setCurrentModule, openModal } = useStoreActions();
+  const { auth } = useStore();
+  const { setCurrentModule, openModal, logout } = useStoreActions();
 
   const handleModuleChange = (moduleId: ModuleType) => {
     setCurrentModule(moduleId);
@@ -142,11 +169,15 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
     <TopBarContainer isElectronMacOS={isElectronMacOS}>
       <Logo>
         <i className="fas fa-cube"></i>
-        <span>Open 3D Studio</span>
+        <span>Open3DStudio</span>
       </Logo>
       
       <MainNav>
@@ -163,18 +194,26 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
       </MainNav>
 
       <HeaderActions>
-        {/* <ActionButton title="Save Project">
-          <i className="fas fa-save"></i>
-        </ActionButton>
-        <ActionButton title="Export Model">
-          <i className="fas fa-download"></i>
-        </ActionButton> */}
+        {auth.authStatus?.user_auth_enabled && auth.isAuthenticated && auth.user && (
+          <UserInfo>
+            <UserBadge />
+            <UserName>{auth.user.username}</UserName>
+          </UserInfo>
+        )}
+        
         <ActionButton 
           title="View on GitHub" 
           onClick={() => window.open('https://github.com/FishWoWater/Open3DStudio', '_blank')}
         >
           <i className="fab fa-github"></i>
         </ActionButton>
+        
+        {auth.authStatus?.user_auth_enabled && auth.isAuthenticated && (
+          <ActionButton title="Logout" onClick={handleLogout}>
+            <i className="fas fa-sign-out-alt"></i>
+          </ActionButton>
+        )}
+        
         <ActionButton title="Settings" onClick={handleSettingsClick}>
           <i className="fas fa-cog"></i>
         </ActionButton>

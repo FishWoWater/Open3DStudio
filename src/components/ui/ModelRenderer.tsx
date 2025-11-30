@@ -6,6 +6,7 @@ import { MaterialManager } from '../../utils/materials';
 interface ModelRendererProps {
   model: LoadedModel;
   renderMode: RenderMode;
+  doubleSided?: boolean;
   onRef?: (ref: THREE.Group | null) => void;
   onPointerDown?: (event: any) => void;
 }
@@ -17,12 +18,14 @@ interface ModelRendererProps {
 const ModelRenderer: React.FC<ModelRendererProps> = ({
   model,
   renderMode,
+  doubleSided = false,
   onRef,
   onPointerDown
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const lastRenderMode = useRef<RenderMode>(renderMode);
   const lastSelected = useRef<boolean>(model.selected);
+  const lastDoubleSided = useRef<boolean>(doubleSided);
 
   // Update ref callback when group changes
   useEffect(() => {
@@ -37,7 +40,8 @@ const ModelRenderer: React.FC<ModelRendererProps> = ({
 
     const hasChanged = 
       lastRenderMode.current !== renderMode || 
-      lastSelected.current !== model.selected;
+      lastSelected.current !== model.selected ||
+      lastDoubleSided.current !== doubleSided;
 
     if (hasChanged) {
       MaterialManager.applyMaterialToObject(
@@ -46,13 +50,15 @@ const ModelRenderer: React.FC<ModelRendererProps> = ({
         model.material,
         model.originalMaterials,
         model.selected,
-        { skeleton: model.skeleton, parts: model.parts }
+        { skeleton: model.skeleton, parts: model.parts },
+        doubleSided
       );
 
       lastRenderMode.current = renderMode;
       lastSelected.current = model.selected;
+      lastDoubleSided.current = doubleSided;
     }
-  }, [renderMode, model.selected, model.object3D, model.material, model.originalMaterials, model.skeleton, model.parts]);
+  }, [renderMode, model.selected, doubleSided, model.object3D, model.material, model.originalMaterials, model.skeleton, model.parts]);
 
   // Set userData for selection
   useEffect(() => {

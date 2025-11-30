@@ -4,6 +4,7 @@ import { Task } from '../../types/state';
 import { formatDistanceToNow } from 'date-fns';
 import { useSettings } from '../../store';
 import { getFullApiUrl } from '../../utils/url';
+import TaskModelPreview from './TaskModelPreview';
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -269,6 +270,50 @@ const ErrorMessage = styled.div`
   margin-top: ${props => props.theme.spacing.sm};
 `;
 
+const ImportProgressContainer = styled.div`
+  margin-top: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.sm};
+  background: ${props => props.theme.colors.background.primary};
+  border-radius: ${props => props.theme.borderRadius.sm};
+`;
+
+const ProgressBarWrapper = styled.div`
+  width: 100%;
+  height: 4px;
+  background: ${props => props.theme.colors.background.tertiary};
+  border-radius: ${props => props.theme.borderRadius.sm};
+  overflow: hidden;
+  margin-bottom: ${props => props.theme.spacing.xs};
+`;
+
+const ProgressBarFill = styled.div<{ progress: number }>`
+  height: 100%;
+  width: ${props => props.progress}%;
+  background: linear-gradient(90deg, 
+    ${props => props.theme.colors.primary[500]}, 
+    ${props => props.theme.colors.primary[400]}
+  );
+  transition: width 0.3s ease;
+  border-radius: ${props => props.theme.borderRadius.sm};
+`;
+
+const ImportProgressText = styled.div`
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  color: ${props => props.theme.colors.text.secondary};
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
+  
+  i {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
 interface TaskItemProps {
   task: Task;
   onClick: (task: Task) => void;
@@ -277,6 +322,9 @@ interface TaskItemProps {
   onDownload?: (taskId: string) => void;
   onViewInViewport?: (taskId: string) => void;
   onImportToScene?: (taskId: string) => void;
+  onUseAsInput?: (taskId: string) => void;
+  isImporting?: boolean;
+  importProgress?: number;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({
@@ -286,7 +334,10 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onRetry,
   onDownload,
   onViewInViewport,
-  onImportToScene
+  onImportToScene,
+  onUseAsInput,
+  isImporting = false,
+  importProgress = 0
 }) => {
   const [promptExpanded, setPromptExpanded] = useState(false);
   const settings = useSettings();
@@ -414,6 +465,14 @@ const TaskItem: React.FC<TaskItemProps> = ({
         </ImageGallery>
       )}
 
+      {/* 3D Model Preview - Show for completed tasks with downloadUrl */}
+      {task.status === 'completed' && task.result?.downloadUrl && (
+        <TaskModelPreview
+          downloadUrl={getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint) || ''}
+          format={task.result.format}
+        />
+      )}
+
       {/* Progress Bar */}
       <ProgressContainer visible={shouldShowProgress}>
         <ProgressBar progress={progress} />
@@ -431,6 +490,19 @@ const TaskItem: React.FC<TaskItemProps> = ({
         </ErrorMessage>
       )}
 
+      {/* Import Progress */}
+      {isImporting && (
+        <ImportProgressContainer>
+          <ProgressBarWrapper>
+            <ProgressBarFill progress={importProgress} />
+          </ProgressBarWrapper>
+          <ImportProgressText>
+            <i className="fas fa-spinner"></i>
+            Importing model... {Math.round(importProgress)}%
+          </ImportProgressText>
+        </ImportProgressContainer>
+      )}
+
       {/* Action Buttons */}
       <ActionButtons>
         {task.status === 'completed' && onImportToScene && (
@@ -441,7 +513,18 @@ const TaskItem: React.FC<TaskItemProps> = ({
               onImportToScene(task.id);
             }}
           >
-            Import to Scene
+            Import
+          </ActionButton>
+        )}
+        
+        {task.status === 'completed' && onUseAsInput && task.result?.downloadUrl && (
+          <ActionButton 
+            onClick={(e) => {
+              e.stopPropagation();
+              onUseAsInput(task.id);
+            }}
+          >
+            Reuse
           </ActionButton>
         )}
         

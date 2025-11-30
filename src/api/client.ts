@@ -19,10 +19,19 @@ import {
   PartCompletionRequest,
   MeshSegmentationRequest,
   AutoRiggingRequest,
+  MeshRetopologyRequest,
+  RetopologyAvailableModels,
+  MeshUVUnwrappingRequest,
+  UVUnwrappingAvailableModels,
+  UVPackMethods,
   FileUploadResponse,
   FileMetadata,
   SupportedFormats,
-  ApiError
+  ApiError,
+  AuthStatus,
+  RegisterRequest,
+  LoginRequest,
+  AuthResponse
 } from '../types/api';
 
 class ApiClient {
@@ -35,10 +44,14 @@ class ApiClient {
       baseURL: config.baseURL,
       timeout: config.timeout || 30000,
       headers: {
-        'Content-Type': 'application/json',
-        ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
+        'Content-Type': 'application/json'
       }
     });
+
+    // Set auth token if provided
+    if (config.apiKey) {
+      this.client.defaults.headers.common['Authorization'] = `Bearer ${config.apiKey}`;
+    }
 
     this.setupInterceptors();
   }
@@ -149,11 +162,49 @@ class ApiClient {
     // Update auth header if API key changed
     if (newConfig.apiKey !== undefined) {
       if (newConfig.apiKey) {
-        this.client.defaults.headers['Authorization'] = `Bearer ${newConfig.apiKey}`;
+        this.client.defaults.headers.common['Authorization'] = `Bearer ${newConfig.apiKey}`;
       } else {
-        delete this.client.defaults.headers['Authorization'];
+        delete this.client.defaults.headers.common['Authorization'];
       }
     }
+  }
+
+  // Set authentication token for all requests
+  setAuthToken(token: string | null) {
+    if (token) {
+      this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      this.config.apiKey = token;
+      console.log('[API Client] Auth token set:', token.substring(0, 20) + '...');
+      console.log('[API Client] Authorization header:', this.client.defaults.headers.common['Authorization']);
+    } else {
+      delete this.client.defaults.headers.common['Authorization'];
+      this.config.apiKey = undefined;
+      console.log('[API Client] Auth token cleared');
+    }
+  }
+
+  // Authentication Endpoints
+  async getAuthStatus(): Promise<AuthStatus> {
+    const response = await this.retry(() => 
+      this.client.get<AuthStatus>('/api/v1/system/auth-status')
+    );
+    return response.data;
+  }
+
+  async register(request: RegisterRequest): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>(
+      '/api/v1/users/register',
+      request
+    );
+    return response.data;
+  }
+
+  async login(request: LoginRequest): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>(
+      '/api/v1/users/login',
+      request
+    );
+    return response.data;
   }
 
   // System Management Endpoints
@@ -225,6 +276,13 @@ class ApiClient {
   async getJobsHistory(params?: JobsHistoryParams): Promise<JobsHistoryResponse> {
     const response = await this.retry(() => 
       this.client.get<JobsHistoryResponse>('/api/v1/system/jobs/history', { params })
+    );
+    return response.data;
+  }
+
+  async deleteJob(jobId: string): Promise<BaseApiResponse> {
+    const response = await this.client.delete<BaseApiResponse>(
+      `/api/v1/system/jobs/${jobId}`
     );
     return response.data;
   }
@@ -377,6 +435,59 @@ class ApiClient {
   async getAutoRiggingSupportedFormats(): Promise<SupportedFormats> {
     const response = await this.retry(() => 
       this.client.get<SupportedFormats>('/api/v1/auto-rigging/supported-formats')
+    );
+    return response.data;
+  }
+
+  // Mesh Retopology Endpoints
+  async retopologizeMesh(request: MeshRetopologyRequest): Promise<BaseApiResponse> {
+    const response = await this.client.post<BaseApiResponse>(
+      '/api/v1/mesh-retopology/retopologize-mesh',
+      request
+    );
+    return response.data;
+  }
+
+  async getRetopologyAvailableModels(): Promise<RetopologyAvailableModels> {
+    const response = await this.retry(() => 
+      this.client.get<RetopologyAvailableModels>('/api/v1/mesh-retopology/available-models')
+    );
+    return response.data;
+  }
+
+  async getMeshRetopologySupportedFormats(): Promise<SupportedFormats> {
+    const response = await this.retry(() => 
+      this.client.get<SupportedFormats>('/api/v1/mesh-retopology/supported-formats')
+    );
+    return response.data;
+  }
+
+  // Mesh UV Unwrapping Endpoints
+  async unwrapMeshUV(request: MeshUVUnwrappingRequest): Promise<BaseApiResponse> {
+    const response = await this.client.post<BaseApiResponse>(
+      '/api/v1/mesh-uv-unwrapping/unwrap-mesh',
+      request
+    );
+    return response.data;
+  }
+
+  async getUVUnwrappingAvailableModels(): Promise<UVUnwrappingAvailableModels> {
+    const response = await this.retry(() => 
+      this.client.get<UVUnwrappingAvailableModels>('/api/v1/mesh-uv-unwrapping/available-models')
+    );
+    return response.data;
+  }
+
+  async getUVUnwrappingPackMethods(): Promise<UVPackMethods> {
+    const response = await this.retry(() => 
+      this.client.get<UVPackMethods>('/api/v1/mesh-uv-unwrapping/pack-methods')
+    );
+    return response.data;
+  }
+
+  async getMeshUVUnwrappingSupportedFormats(): Promise<SupportedFormats> {
+    const response = await this.retry(() => 
+      this.client.get<SupportedFormats>('/api/v1/mesh-uv-unwrapping/supported-formats')
     );
     return response.data;
   }

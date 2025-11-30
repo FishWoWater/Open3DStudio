@@ -39,7 +39,7 @@ export interface JobResultInfo {
   file_info: {
     file_exists: boolean;
     file_size_mb: number;
-    file_format: string;
+    file_extension: string;
     content_type: string;
   };
   generation_info: {
@@ -278,6 +278,61 @@ export interface AutoRiggingRequest {
   model_preference?: string;
 }
 
+// Mesh Retopology Types
+export interface MeshRetopologyRequest {
+  mesh_file_id : string; // preferred method
+  target_vertex_count?: number;
+  poly_type?: 'tri' | 'quad';
+  output_format: OutputFormat;
+  seed?: number;
+  model_preference?: string;
+}
+
+export interface RetopologyAvailableModels {
+  available_models: string[];
+  models_details: {
+    [key: string]: {
+      description: string;
+      target_vertices: number;
+      recommended_for: string;
+    };
+  };
+}
+
+// Mesh UV Unwrapping Types
+export interface MeshUVUnwrappingRequest {
+  mesh_file_id : string; // preferred method
+  distortion_threshold?: number;
+  pack_method?: 'blender';
+  save_individual_parts?: boolean;
+  save_visuals?: boolean;
+  output_format: 'obj' | 'glb';
+  model_preference?: string;
+}
+
+export interface UVUnwrappingAvailableModels {
+  available_models: string[];
+  models_details: {
+    [key: string]: {
+      description: string;
+      method: string;
+      features: string[];
+      recommended_for: string;
+    };
+  };
+}
+
+export interface UVPackMethods {
+  pack_methods: {
+    [key: string]: {
+      description: string;
+      requirements: string;
+      speed: string;
+      features?: string[];
+    };
+  };
+}
+
 // Legacy Upload Types (keeping for backward compatibility)
 export interface UploadResponse {
   file_id?: string;
@@ -340,6 +395,49 @@ export interface ApiConfig {
   timeout?: number;
   apiKey?: string;
   retries?: number;
+}
+
+// Authentication Types
+export interface AuthStatus {
+  user_auth_enabled: boolean;
+  api_key_required: boolean;
+  mode: 'simple' | 'authenticated' | 'api_key';
+  description: string;
+  features: {
+    job_isolation: boolean;
+    user_management: boolean;
+    role_based_access: boolean;
+  };
+  timestamp: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    user_id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+  message: string;
+}
+
+export interface UserInfo {
+  user_id: string;
+  username: string;
+  email: string;
+  role: string;
 }
 
 // Error Types

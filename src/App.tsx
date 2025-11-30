@@ -16,6 +16,8 @@ import SettingsPanel from './components/ui/SettingsPanel';
 import NotificationContainer from './components/ui/NotificationContainer';
 import LoadingOverlay from './components/ui/LoadingOverlay';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import UVViewerModal from './components/ui/UVViewerModal';
+import AuthPanel from './components/ui/AuthPanel';
 
 // Global Styles
 const GlobalStyle = createGlobalStyle`
@@ -154,19 +156,28 @@ const useElectronIntegration = () => {
 // Hook for API initialization
 const useApiInitialization = () => {
   const settings = useSettings();
-  const { updateSystemStatus, addNotification, initializeTasks } = useStoreActions();
+  const { updateSystemStatus, addNotification, initializeTasks, checkAuthStatus, loadSavedAuth } = useStoreActions();
   const [apiInitialized, setApiInitialized] = useState(false);
+  const auth = useStore(state => state.auth);
 
   useEffect(() => {
     const initializeApi = async () => {
       try {
-        // Create API client
+        // Load saved auth token from localStorage
+        const { authPersistence } = await import('./services/authPersistence');
+        const savedAuth = authPersistence.loadAuth();
+        const savedToken = savedAuth?.token;
+
+        // Create API client with token if available
         const apiClient = createApiClient({
           baseURL: settings.apiEndpoint,
-          apiKey: settings.apiKey,
+          apiKey: savedToken || settings.apiKey,
           timeout: 30000,
           retries: 3
         });
+
+        // Load saved auth into store (after API client is created)
+        loadSavedAuth();
 
         // Test connection with fast health check (5 second timeout, no retries)
         const isConnected = await apiClient.quickHealthCheck();
@@ -183,6 +194,13 @@ const useApiInitialization = () => {
             duration: 3000
           });
 
+          // Check authentication status
+          try {
+            await checkAuthStatus();
+          } catch (error) {
+            console.warn('Failed to check auth status:', error);
+          }
+
           // Get initial system status with normal timeout/retry settings
           try {
             const systemStatus = await apiClient.getSystemStatus();
@@ -194,11 +212,15 @@ const useApiInitialization = () => {
             console.warn('Failed to get system status:', error);
           }
 
-          // Initialize tasks with backend history
-          try {
-            await initializeTasks();
-          } catch (error) {
-            console.warn('Failed to initialize tasks:', error);
+          // Initialize tasks with backend history (only if auth is disabled or user is authenticated)
+          // We'll delay this until we know the auth status
+          const authStatusCheck = auth.authStatus;
+          if (!authStatusCheck || !authStatusCheck.user_auth_enabled || auth.isAuthenticated) {
+            try {
+              await initializeTasks();
+            } catch (error) {
+              console.warn('Failed to initialize tasks:', error);
+            }
           }
         } else {
           addNotification({
@@ -223,16 +245,17 @@ const useApiInitialization = () => {
     };
 
     initializeApi();
-  }, [settings.apiEndpoint, settings.apiKey, updateSystemStatus, addNotification, initializeTasks]);
+  }, [settings.apiEndpoint, settings.apiKey]);
 
   return apiInitialized;
 };
 
 // Main App Component
 const App: React.FC = () => {
-  const { isLoading, error } = useStore();
+  const { isLoading, error, auth } = useStore();
   const { ui } = useStore();
   const settings = useSettings();
+  const { closeModal, initializeTasks } = useStoreActions();
   
   // Get current theme based on settings
   const currentTheme = getTheme(settings.theme === 'auto' ? 'dark' : settings.theme);
@@ -240,26 +263,52 @@ const App: React.FC = () => {
   // Initialize integrations
   useElectronIntegration();
   const apiInitialized = useApiInitialization();
+
+  // Determine if we need authentication
+  const authRequired = auth.authStatus?.user_auth_enabled && !auth.isAuthenticated;
+  const showAuthPanel = apiInitialized && authRequired;
   
-  // Start task polling once API is initialized
+  // Start task polling once API is initialized and authenticated (if required)
   useTaskPolling({
-    enabled: apiInitialized,
+    enabled: apiInitialized && !authRequired,
     pollingInterval: settings.pollingInterval
   });
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts();
 
+  // Handle successful authentication
+  const handleAuthComplete = async () => {
+    // After successful auth, initialize tasks
+    try {
+      await initializeTasks();
+    } catch (error) {
+      console.error('Failed to initialize tasks after auth:', error);
+    }
+  };
+
   // Show loading screen while initializing
-  if (!apiInitialized) {
+  if (!apiInitialized || auth.isCheckingAuth) {
     return (
       <ThemeProvider theme={currentTheme}>
         <GlobalStyle />
         <AppContainer>
           <LoadingOverlay 
             isVisible={true}
-            message="Initializing 3D Studio..."
+            message={auth.isCheckingAuth ? "Checking authentication..." : "Initializing 3D Studio..."}
           />
+        </AppContainer>
+      </ThemeProvider>
+    );
+  }
+
+  // Show auth panel if authentication is required
+  if (showAuthPanel) {
+    return (
+      <ThemeProvider theme={currentTheme}>
+        <GlobalStyle />
+        <AppContainer>
+          <AuthPanel onAuthComplete={handleAuthComplete} />
         </AppContainer>
       </ThemeProvider>
     );
@@ -296,6 +345,15 @@ const App: React.FC = () => {
           {/* Overlays and Modals */}
           <SettingsPanel />
           <NotificationContainer />
+          
+          {/* UV Viewer Modal */}
+          {ui.modal.type === 'uv-viewer' && (
+            <UVViewerModal
+              isOpen={ui.modal.isOpen}
+              model={ui.modal.data?.model || null}
+              onClose={closeModal}
+            />
+          )}
           
           {/* Global Loading Overlay */}
           {isLoading && (

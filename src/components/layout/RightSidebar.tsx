@@ -48,6 +48,11 @@ const SidebarHeader = styled.div`
   }
 `;
 
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
 const ClearButton = styled.button`
   background: transparent;
   border: 1px solid ${props => props.theme.colors.border.default};
@@ -86,7 +91,7 @@ interface RightSidebarProps {
 
 const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
   const tasks = useTasks();
-  const { clearCompletedTasks, removeTask, updateTask } = useStoreActions();
+  const { clearFailedTasks, clearAllTasks, removeTask, updateTask } = useStoreActions();
 
   const handleTaskClick = (task: any) => {
     // Handle task click - maybe show details or load result
@@ -101,8 +106,14 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
     updateTask(taskId, { status: 'queued' });
   };
 
-  const handleClearCompleted = () => {
-    clearCompletedTasks();
+  const handleClearFailed = () => {
+    clearFailedTasks();
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Are you sure you want to remove all tasks? This action cannot be undone.')) {
+      clearAllTasks();
+    }
   };
 
   if (isCollapsed) {
@@ -113,13 +124,22 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
     <SidebarContainer isCollapsed={false}>
       <SidebarHeader>
         <h3>Task History</h3>
-        <ClearButton 
-          onClick={handleClearCompleted}
-          disabled={tasks.completedTasks.length === 0}
-          title="Clear completed tasks"
-        >
-          <i className="fas fa-trash"></i>
-        </ClearButton>
+        <ButtonGroup>
+          <ClearButton 
+            onClick={handleClearFailed}
+            disabled={tasks.failedTasks.length === 0}
+            title="Clear failed tasks"
+          >
+            <i className="fas fa-exclamation-triangle"></i>
+          </ClearButton>
+          <ClearButton 
+            onClick={handleClearAll}
+            disabled={tasks.tasks.length === 0}
+            title="Clear all tasks"
+          >
+            <i className="fas fa-trash-alt"></i>
+          </ClearButton>
+        </ButtonGroup>
       </SidebarHeader>
       
       <SidebarContent>
@@ -128,7 +148,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
           onTaskClick={handleTaskClick}
           onTaskDelete={handleTaskDelete}
           onTaskRetry={handleTaskRetry}
-          onClearCompleted={handleClearCompleted}
+          onClearCompleted={handleClearFailed}
         />
       </SidebarContent>
     </SidebarContainer>

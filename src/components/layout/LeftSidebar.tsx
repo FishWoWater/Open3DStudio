@@ -6,6 +6,8 @@ import MeshPaintingPanel from '../features/MeshPaintingPanel';
 import MeshSegmentationPanel from '../features/MeshSegmentationPanel';
 import PartCompletionPanel from '../features/PartCompletionPanel';
 import AutoRiggingPanel from '../features/AutoRiggingPanel';
+import MeshRetopologyPanel from '../features/MeshRetopologyPanel';
+import MeshUVUnwrappingPanel from '../features/MeshUVUnwrappingPanel';
 
 const SidebarContainer = styled.aside<{ isCollapsed: boolean; width: number }>`
   width: ${props => props.isCollapsed ? '0' : `${props.width}px`};
@@ -66,7 +68,9 @@ const moduleNames: Record<string, string> = {
   'mesh-painting': 'Mesh Painting',
   'mesh-segmentation': 'Mesh Segmentation',
   'part-completion': 'Part Completion',
-  'auto-rigging': 'Auto Rigging'
+  'auto-rigging': 'Auto Rigging',
+  'mesh-retopology': 'Mesh Retopology',
+  'mesh-uv-unwrapping': 'UV Unwrapping'
 };
 
 const LeftSidebar: React.FC<LeftSidebarProps> = ({ isCollapsed, width }) => {
@@ -85,6 +89,10 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isCollapsed, width }) => {
         return <PartCompletionPanel />;
       case 'auto-rigging':
         return <AutoRiggingPanel />;
+      case 'mesh-retopology':
+        return <MeshRetopologyPanel />;
+      case 'mesh-uv-unwrapping':
+        return <MeshUVUnwrappingPanel />;
       default:
         return <div>Select a module to begin</div>;
     }

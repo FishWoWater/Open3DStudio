@@ -3,12 +3,13 @@ import { HistoricalJob, JobsHistoryParams } from '../types/api';
 import { getApiClient } from '../api/client';
 
 const STORAGE_KEY = 'minimal3d_tasks';
-const STORAGE_VERSION = '1.0';
+const STORAGE_VERSION = '1.1';
 
 interface StoredTaskData {
   version: string;
   tasks: Task[];
   lastSync: string;
+  userId?: string; // Track which user these tasks belong to
 }
 
 /**
@@ -28,7 +29,7 @@ export class TaskPersistenceService {
   /**
    * Save tasks to localStorage
    */
-  saveTasks(tasks: Task[]): void {
+  saveTasks(tasks: Task[], userId?: string): void {
     try {
       const data: StoredTaskData = {
         version: STORAGE_VERSION,
@@ -37,7 +38,8 @@ export class TaskPersistenceService {
           createdAt: task.createdAt.toISOString(),
           completedAt: task.completedAt?.toISOString(),
         } as any)),
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
+        userId // Store the user ID to verify ownership later
       };
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -48,8 +50,10 @@ export class TaskPersistenceService {
 
   /**
    * Load tasks from localStorage
+   * @param currentUserId - The currently logged in user ID. If provided, only load tasks for this user.
+   *                        If undefined, load tasks regardless of user (anonymous mode).
    */
-  loadTasks(): Task[] {
+  loadTasks(currentUserId?: string): Task[] {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return [];
@@ -63,6 +67,16 @@ export class TaskPersistenceService {
         return [];
       }
 
+      // In authenticated mode, verify user ownership
+      if (currentUserId !== undefined) {
+        // If we have a currentUserId (authenticated mode) but cached tasks belong to different user
+        if (data.userId && data.userId !== currentUserId) {
+          console.warn(`Cached tasks belong to different user (${data.userId}), clearing...`);
+          this.clearTasks();
+          return [];
+        }
+      }
+
       return data.tasks.map(task => ({
         ...task,
         createdAt: new Date(task.createdAt as any),
@@ -71,6 +85,22 @@ export class TaskPersistenceService {
     } catch (error) {
       console.error('Failed to load tasks from localStorage:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get the user ID associated with cached tasks
+   */
+  getCachedUserId(): string | null {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return null;
+
+      const data: StoredTaskData = JSON.parse(stored);
+      return data.userId || null;
+    } catch (error) {
+      console.error('Failed to get cached user ID:', error);
+      return null;
     }
   }
 
@@ -241,16 +271,17 @@ export class TaskPersistenceService {
 
   /**
    * Initialize task persistence for the app
+   * @param userId - Current user ID (if authenticated)
    */
-  async initializeAndSync(): Promise<Task[]> {
-    // Load local tasks first
-    const localTasks = this.loadTasks();
+  async initializeAndSync(userId?: string): Promise<Task[]> {
+    // Load local tasks first, verifying user ownership if in auth mode
+    const localTasks = this.loadTasks(userId);
     
     // Merge with backend historical data
     const mergedTasks = await this.mergeTasks(localTasks);
     
-    // Save the merged result back to localStorage
-    this.saveTasks(mergedTasks);
+    // Save the merged result back to localStorage with user ID
+    this.saveTasks(mergedTasks, userId);
     
     return mergedTasks;
   }

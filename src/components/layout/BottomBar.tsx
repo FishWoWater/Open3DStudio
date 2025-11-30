@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useViewport, useStoreActions, useSystem } from '../../store';
 import { getApiClient } from '../../api/client';
 import { RenderMode, ViewportTool } from '../../types/state';
+import TransformInputModal from '../ui/TransformInputModal';
 
 const BottomBarContainer = styled.footer`
   background: ${props => props.theme.colors.background.secondary};
@@ -137,10 +138,14 @@ const BottomBar: React.FC = () => {
     setRenderMode, 
     setCurrentTool,
     deleteSelectedModels,
-    updateSystemStatus 
+    updateSystemStatus,
+    setDoubleSided,
+    openModal,
+    setSelectedModelsTransform
   } = useStoreActions();
   const [featuresCount, setFeaturesCount] = useState(0);
   const [modelsCount, setModelsCount] = useState(0);
+  const [showTransformModal, setShowTransformModal] = useState(false);
 
   // Check API connection and get system status
   useEffect(() => {
@@ -205,6 +210,61 @@ const BottomBar: React.FC = () => {
     }
   };
 
+  const handleViewUV = () => {
+    if (viewport.selection.length === 1) {
+      const selectedModel = viewport.loadedModels.find(m => m.id === viewport.selection[0]);
+      if (selectedModel) {
+        openModal('uv-viewer', { model: selectedModel });
+      }
+    }
+  };
+
+  const handleTransformInput = () => {
+    if (viewport.selection.length > 0) {
+      setShowTransformModal(true);
+    }
+  };
+
+  const handleApplyTransform = (transform: {
+    position: [number, number, number];
+    rotation: [number, number, number];
+    scale: [number, number, number];
+  }) => {
+    setSelectedModelsTransform(transform);
+  };
+
+  // Get current transform values for selected models (average if multiple selected)
+  const getCurrentTransform = () => {
+    const selectedModels = viewport.loadedModels.filter(m => viewport.selection.includes(m.id));
+    if (selectedModels.length === 0) {
+      return { position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], scale: [1, 1, 1] as [number, number, number] };
+    }
+    
+    // Average the transforms
+    let avgPos = [0, 0, 0];
+    let avgRot = [0, 0, 0];
+    let avgScale = [0, 0, 0];
+    
+    selectedModels.forEach(model => {
+      avgPos[0] += model.position[0];
+      avgPos[1] += model.position[1];
+      avgPos[2] += model.position[2];
+      avgRot[0] += model.rotation[0];
+      avgRot[1] += model.rotation[1];
+      avgRot[2] += model.rotation[2];
+      avgScale[0] += model.scale[0];
+      avgScale[1] += model.scale[1];
+      avgScale[2] += model.scale[2];
+    });
+    
+    const count = selectedModels.length;
+    return {
+      position: [avgPos[0] / count, avgPos[1] / count, avgPos[2] / count] as [number, number, number],
+      rotation: [avgRot[0] / count, avgRot[1] / count, avgRot[2] / count] as [number, number, number],
+      scale: [avgScale[0] / count, avgScale[1] / count, avgScale[2] / count] as [number, number, number]
+    };
+  };
+
   // Check if any loaded models support parts or skeleton features
   const hasPartsSupport = viewport.loadedModels.some(model => model.parts?.hasParts);
   const hasSkeletonSupport = viewport.loadedModels.some(model => model.skeleton && model.skeleton.bones.length > 0);
@@ -234,6 +294,17 @@ const BottomBar: React.FC = () => {
         <Separator />
         
         <ControlButton 
+          title={viewport.selection.length > 0 ? 'Transform Properties (Manual Input)' : 'Select a model to edit transform'}
+          onClick={handleTransformInput}
+          style={{ 
+            opacity: viewport.selection.length > 0 ? 1 : 0.5,
+            cursor: viewport.selection.length > 0 ? 'pointer' : 'not-allowed'
+          }}
+        >
+          <i className="fas fa-sliders-h"></i>
+        </ControlButton>
+        
+        <ControlButton 
           title={`Delete Selected (${viewport.selection.length})`}
           onClick={handleDeleteSelected}
           style={{ 
@@ -242,6 +313,17 @@ const BottomBar: React.FC = () => {
           }}
         >
           <i className="fas fa-trash"></i>
+        </ControlButton>
+        
+        <ControlButton 
+          title={viewport.selection.length === 1 ? 'View UV Layout' : 'Select exactly one model to view UV'}
+          onClick={handleViewUV}
+          style={{ 
+            opacity: viewport.selection.length === 1 ? 1 : 0.5,
+            cursor: viewport.selection.length === 1 ? 'pointer' : 'not-allowed'
+          }}
+        >
+          <i className="fas fa-map"></i>
         </ControlButton>
       </ControlGroup>
 
@@ -257,6 +339,16 @@ const BottomBar: React.FC = () => {
             <i className={mode.icon}></i>
           </ControlButton>
         ))}
+        
+        <Separator />
+        
+        <ControlButton
+          active={viewport.doubleSided}
+          onClick={() => setDoubleSided(!viewport.doubleSided)}
+          title="Toggle back face rendering (Double Sided)"
+        >
+          <i className="fas fa-layer-group"></i>
+        </ControlButton>
       </ControlGroup>
 
       {/* Status Information */}
@@ -276,6 +368,15 @@ const BottomBar: React.FC = () => {
           <span>Memory: {Math.round(system.performance.memoryUsage)}%</span>
         </PerformanceInfo> */}
       </StatusInfo>
+
+      {/* Transform Input Modal */}
+      {showTransformModal && (
+        <TransformInputModal
+          currentTransform={getCurrentTransform()}
+          onApply={handleApplyTransform}
+          onClose={() => setShowTransformModal(false)}
+        />
+      )}
     </BottomBarContainer>
   );
 };

@@ -85,7 +85,8 @@ export class MaterialManager {
     config?: ModelMaterial,
     originalMaterials?: (THREE.Material | THREE.Material[])[],
     isSelected: boolean = false,
-    modelData?: { skeleton?: any; parts?: any }
+    modelData?: { skeleton?: any; parts?: any },
+    doubleSided: boolean = false
   ): void {
     if (!object) return;
 
@@ -96,18 +97,18 @@ export class MaterialManager {
 
     // If it's a selected object, use selection material regardless of render mode
     if (isSelected) {
-      this.applySelectionMaterialToObject(object, renderMode);
+      this.applySelectionMaterialToObject(object, renderMode, doubleSided);
       return;
     }
 
     // Handle special render modes first
     if (renderMode === 'parts' && modelData?.parts?.hasParts) {
-      this.applyPartsMaterialToObject(object, modelData.parts);
+      this.applyPartsMaterialToObject(object, modelData.parts, doubleSided);
       return;
     }
 
     if (renderMode === 'skeleton' && modelData?.skeleton) {
-      this.applySkeletonMaterialToObject(object, modelData.skeleton, originalMaterials, config);
+      this.applySkeletonMaterialToObject(object, modelData.skeleton, originalMaterials, config, doubleSided);
       return;
     }
 
@@ -115,17 +116,17 @@ export class MaterialManager {
     if (originalMaterials && originalMaterials.length > 0) {
       // For 'rendered' mode, always use original materials
       if (renderMode === 'rendered') {
-        this.restoreOriginalMaterials(object, originalMaterials);
+        this.restoreOriginalMaterials(object, originalMaterials, doubleSided);
         return;
       } else {
         // For other render modes, apply mode-specific materials but preserve original colors if possible
-        this.applyRenderModeWithOriginalColors(object, renderMode, originalMaterials, config);
+        this.applyRenderModeWithOriginalColors(object, renderMode, originalMaterials, config, doubleSided);
         return;
       }
     }
 
     // Fallback: For objects without original materials, apply override materials
-    this.applyOverrideMaterialToObject(object, renderMode, config);
+    this.applyOverrideMaterialToObject(object, renderMode, config, doubleSided);
   }
 
   /**
@@ -135,7 +136,8 @@ export class MaterialManager {
     object: THREE.Object3D,
     renderMode: RenderMode,
     originalMaterials: (THREE.Material | THREE.Material[])[],
-    config?: ModelMaterial
+    config?: ModelMaterial,
+    doubleSided: boolean = false
   ): void {
     let materialIndex = 0;
     
@@ -160,7 +162,8 @@ export class MaterialManager {
               color: colorHex,
               transparent: config?.transparent || false,
               opacity: config?.opacity || 1.0,
-              wireframe: false
+              wireframe: false,
+              side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
             });
             break;
             
@@ -188,7 +191,8 @@ export class MaterialManager {
               clearcoatRoughness: 0.1,
               transparent: config?.transparent || false,
               opacity: config?.opacity || 1.0,
-              wireframe: false
+              wireframe: false,
+              side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
             });
             break;
 
@@ -197,7 +201,8 @@ export class MaterialManager {
             // This won't be called for parts mode
             child.material = new THREE.MeshLambertMaterial({
               color: colorHex,
-              wireframe: false
+              wireframe: false,
+              side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
             });
             break;
 
@@ -250,7 +255,8 @@ export class MaterialManager {
    */
   private static restoreOriginalMaterials(
     object: THREE.Object3D, 
-    originalMaterials: (THREE.Material | THREE.Material[])[]
+    originalMaterials: (THREE.Material | THREE.Material[])[],
+    doubleSided: boolean = false
   ): void {
     let materialIndex = 0;
     
@@ -258,9 +264,15 @@ export class MaterialManager {
       if (child instanceof THREE.Mesh && child.material && materialIndex < originalMaterials.length) {
         const originalMaterial = originalMaterials[materialIndex];
         if (Array.isArray(originalMaterial)) {
-          child.material = originalMaterial.map(mat => mat.clone());
+          child.material = originalMaterial.map(mat => {
+            const cloned = mat.clone();
+            if (doubleSided) cloned.side = THREE.DoubleSide;
+            return cloned;
+          });
         } else {
-          child.material = originalMaterial.clone();
+          const cloned = originalMaterial.clone();
+          if (doubleSided) cloned.side = THREE.DoubleSide;
+          child.material = cloned;
         }
         materialIndex++;
       }
@@ -273,7 +285,8 @@ export class MaterialManager {
   private static applyOverrideMaterialToObject(
     object: THREE.Object3D, 
     renderMode: RenderMode, 
-    config?: ModelMaterial
+    config?: ModelMaterial,
+    doubleSided: boolean = false
   ): void {
     const material = this.getMaterial(renderMode, config);
     
@@ -298,7 +311,9 @@ export class MaterialManager {
           this.addWireframeHelper(child);
         } else {
           // For solid and material modes, apply material directly
-          child.material = material.clone();
+          const cloned = material.clone();
+          if (doubleSided) cloned.side = THREE.DoubleSide;
+          child.material = cloned;
         }
       }
     });
@@ -307,7 +322,7 @@ export class MaterialManager {
   /**
    * Apply selection materials to object hierarchy
    */
-  private static applySelectionMaterialToObject(object: THREE.Object3D, renderMode: RenderMode): void {
+  private static applySelectionMaterialToObject(object: THREE.Object3D, renderMode: RenderMode, doubleSided: boolean = false): void {
     const selectionMaterial = this.getSelectionMaterial(renderMode);
     
     // Clear any existing helpers first
@@ -332,7 +347,9 @@ export class MaterialManager {
           wireframeHelper.userData.isWireframeHelper = true;
           child.add(wireframeHelper);
         } else {
-          child.material = selectionMaterial.clone();
+          const cloned = selectionMaterial.clone();
+          if (doubleSided) cloned.side = THREE.DoubleSide;
+          child.material = cloned;
         }
       }
     });
@@ -384,7 +401,7 @@ export class MaterialManager {
   /**
    * Apply different colors to each mesh group for parts visualization
    */
-  private static applyPartsMaterialToObject(object: THREE.Object3D, partsData: any): void {
+  private static applyPartsMaterialToObject(object: THREE.Object3D, partsData: any, doubleSided: boolean = false): void {
     // Predefined colors for different parts
     const partColors = [
       '#ff6b6b', '#4ecdc4', '#45b7d1', '#feca57', '#ff9ff3',
@@ -402,7 +419,8 @@ export class MaterialManager {
               color: color,
               transparent: false,
               opacity: 1.0,
-              wireframe: false
+              wireframe: false,
+              side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
             });
           }
         });
@@ -417,7 +435,8 @@ export class MaterialManager {
             color: color,
             transparent: false,
             opacity: 1.0,
-            wireframe: false
+            wireframe: false,
+            side: doubleSided ? THREE.DoubleSide : THREE.FrontSide
           });
           meshIndex++;
         }
@@ -432,7 +451,8 @@ export class MaterialManager {
     object: THREE.Object3D, 
     skeletonData: any,
     originalMaterials?: (THREE.Material | THREE.Material[])[],
-    config?: ModelMaterial
+    config?: ModelMaterial,
+    doubleSided: boolean = false
   ): void {
     console.log('[Skeleton Mode] Applying skeleton visualization:', skeletonData);
     

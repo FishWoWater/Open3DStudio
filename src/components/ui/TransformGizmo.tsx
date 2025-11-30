@@ -7,6 +7,7 @@ extend({ Line_: THREE.Line });
 
 interface TransformGizmoProps {
   position: [number, number, number];
+  objectScale?: [number, number, number]; // Current scale of selected object(s)
   tool: ViewportTool;
   transformMode: TransformMode;
   visible: boolean;
@@ -21,6 +22,7 @@ interface TransformGizmoProps {
 
 const TransformGizmo: React.FC<TransformGizmoProps> = ({
   position,
+  objectScale = [1, 1, 1],
   tool,
   transformMode,
   visible,
@@ -36,11 +38,16 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
   const [dragStartPoint, setDragStartPoint] = React.useState<THREE.Vector3>(new THREE.Vector3());
   const [lastMousePosition, setLastMousePosition] = React.useState<THREE.Vector2>(new THREE.Vector2());
 
-  // Calculate gizmo scale based on distance to camera
+  // Calculate gizmo scale based on distance to camera and object scale
   const gizmoScale = useMemo(() => {
     const distance = camera.position.distanceTo(new THREE.Vector3(...position));
-    return Math.max(0.1, distance * 0.15); // Increased base scale for better visibility
-  }, [camera.position, position]);
+    // Calculate average object scale to maintain consistent gizmo size
+    const avgObjectScale = (objectScale[0] + objectScale[1] + objectScale[2]) / 3;
+    // Base gizmo size on camera distance, divided by object scale to maintain visibility
+    // when object is scaled large, gizmo doesn't become tiny
+    const baseScale = distance * 0.15;
+    return Math.max(0.1, baseScale / Math.max(0.1, Math.sqrt(avgObjectScale)));
+  }, [camera.position, position, objectScale]);
 
   // Get world space axis vectors
   const getWorldAxisVectors = useCallback(() => {
@@ -188,7 +195,9 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
     } else if (tool === 'scale') {
       // Calculate scale based on mouse movement
       const mouseDelta = mouse.clone().sub(lastMousePosition);
-      const scaleAmount = 1.0 + (mouseDelta.y * 0.01);
+      // Increased sensitivity and inverted direction for intuitive scaling
+      // Moving mouse up/right = scale up, moving down/left = scale down
+      const scaleAmount = 1.0 + (-mouseDelta.y * 2.0);
       
       if (dragAxis === 'uniform') {
         onTransform({ scale: [scaleAmount, scaleAmount, scaleAmount] });
@@ -353,7 +362,10 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
             <boxGeometry args={[0.15 * gizmoScale, 0.15 * gizmoScale, 0.15 * gizmoScale]} />
             <meshBasicMaterial color="#ff0000" />
           </mesh>
-          <mesh position={[0.4 * gizmoScale, 0, 0]}>
+          <mesh 
+            position={[0.4 * gizmoScale, 0, 0]}
+            rotation={[0, 0, -Math.PI / 2]}
+          >
             <cylinderGeometry args={[0.03 * gizmoScale, 0.03 * gizmoScale, gizmoScale * 0.8, 8]} />
             <meshBasicMaterial color="#ff4444" />
           </mesh>
@@ -368,7 +380,6 @@ const TransformGizmo: React.FC<TransformGizmoProps> = ({
           </mesh>
           <mesh 
             position={[0, 0.4 * gizmoScale, 0]}
-            rotation={[0, 0, Math.PI / 2]}
           >
             <cylinderGeometry args={[0.03 * gizmoScale, 0.03 * gizmoScale, gizmoScale * 0.8, 8]} />
             <meshBasicMaterial color="#44ff44" />

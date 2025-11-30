@@ -137,7 +137,93 @@ const Select = styled.select`
   }
 `;
 
+const ThemeSelector = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: ${props => props.theme.spacing.md};
+  width: 100%;
+`;
 
+const ThemeOption = styled.button<{ isSelected: boolean }>`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.lg};
+  background: ${props => props.isSelected 
+    ? `linear-gradient(135deg, ${props.theme.colors.primary[600]}20, ${props.theme.colors.primary[500]}10)`
+    : props.theme.colors.background.tertiary
+  };
+  border: 2px solid ${props => props.isSelected 
+    ? props.theme.colors.primary[500]
+    : props.theme.colors.border.default
+  };
+  border-radius: ${props => props.theme.borderRadius.lg};
+  color: ${props => props.theme.colors.text.primary};
+  cursor: pointer;
+  transition: all ${props => props.theme.transitions.normal};
+  overflow: hidden;
+  
+  &:hover {
+    border-color: ${props => props.isSelected 
+      ? props.theme.colors.primary[400]
+      : props.theme.colors.primary[500]
+    };
+    background: ${props => props.isSelected 
+      ? `linear-gradient(135deg, ${props.theme.colors.primary[600]}30, ${props.theme.colors.primary[500]}15)`
+      : `${props.theme.colors.primary[500]}10`
+    };
+    transform: translateY(-2px);
+    box-shadow: ${props => props.theme.shadows.md};
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px ${props => props.theme.colors.primary[500]}30;
+  }
+`;
+
+const ThemeIcon = styled.div`
+  font-size: 2rem;
+  color: ${props => props.theme.colors.primary[500]};
+  transition: all ${props => props.theme.transitions.normal};
+  
+  ${ThemeOption}:hover & {
+    transform: scale(1.1);
+    color: ${props => props.theme.colors.primary[400]};
+  }
+`;
+
+const ThemeLabel = styled.span`
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  font-weight: ${props => props.theme.typography.fontWeight.medium};
+  color: ${props => props.theme.colors.text.primary};
+`;
+
+const CheckIcon = styled.div`
+  position: absolute;
+  top: ${props => props.theme.spacing.sm};
+  right: ${props => props.theme.spacing.sm};
+  color: ${props => props.theme.colors.primary[500]};
+  font-size: ${props => props.theme.typography.fontSize.base};
+  animation: scaleIn 0.2s ease-out;
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+`;
 
 const ModalFooter = styled.div`
   padding: ${props => props.theme.spacing.lg};
@@ -285,7 +371,7 @@ const SettingsPanel: React.FC = () => {
               />
             </FormGroup>
             
-            <FormGroup>
+            {/* <FormGroup>
               <Label>API Key (Optional)</Label>
               <Input
                 type="password"
@@ -293,7 +379,7 @@ const SettingsPanel: React.FC = () => {
                 onChange={(e) => handleInputChange('apiKey', e.target.value || undefined)}
                 placeholder="Enter your API key"
               />
-            </FormGroup>
+            </FormGroup> */}
             
             <FormGroup>
               <Button 
@@ -314,14 +400,55 @@ const SettingsPanel: React.FC = () => {
             
             <FormGroup>
               <Label>Theme</Label>
-              <Select
-                value={formData.theme}
-                onChange={(e) => handleInputChange('theme', e.target.value)}
-              >
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-                <option value="auto">Auto</option>
-              </Select>
+              <ThemeSelector>
+                <ThemeOption
+                  isSelected={formData.theme === 'dark'}
+                  onClick={() => handleInputChange('theme', 'dark')}
+                  title="Dark theme"
+                >
+                  <ThemeIcon>
+                    <i className="fas fa-moon"></i>
+                  </ThemeIcon>
+                  <ThemeLabel>Dark</ThemeLabel>
+                  {formData.theme === 'dark' && (
+                    <CheckIcon>
+                      <i className="fas fa-check-circle"></i>
+                    </CheckIcon>
+                  )}
+                </ThemeOption>
+                
+                <ThemeOption
+                  isSelected={formData.theme === 'light'}
+                  onClick={() => handleInputChange('theme', 'light')}
+                  title="Light theme"
+                >
+                  <ThemeIcon>
+                    <i className="fas fa-sun"></i>
+                  </ThemeIcon>
+                  <ThemeLabel>Light</ThemeLabel>
+                  {formData.theme === 'light' && (
+                    <CheckIcon>
+                      <i className="fas fa-check-circle"></i>
+                    </CheckIcon>
+                  )}
+                </ThemeOption>
+                
+                <ThemeOption
+                  isSelected={formData.theme === 'auto'}
+                  onClick={() => handleInputChange('theme', 'auto')}
+                  title="Auto (system preference)"
+                >
+                  <ThemeIcon>
+                    <i className="fas fa-adjust"></i>
+                  </ThemeIcon>
+                  <ThemeLabel>Auto</ThemeLabel>
+                  {formData.theme === 'auto' && (
+                    <CheckIcon>
+                      <i className="fas fa-check-circle"></i>
+                    </CheckIcon>
+                  )}
+                </ThemeOption>
+              </ThemeSelector>
             </FormGroup>
 {/*             
             <FormGroup>

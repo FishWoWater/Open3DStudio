@@ -20,6 +20,7 @@ export const useTaskPolling = (options: UseTaskPollingOptions = {}) => {
   const isPollingRef = useRef(false);
 
   const pollTaskStatus = useCallback(async (task: Task) => {
+    // console.log("before polling the task status is: ", task.result);
     if (!task.jobId || task.status === 'completed' || task.status === 'failed') {
       return; // Skip polling for tasks without jobId or already finished
     }
@@ -27,6 +28,7 @@ export const useTaskPolling = (options: UseTaskPollingOptions = {}) => {
     try {
       const apiClient = getApiClient();
       const jobInfo: JobInfo = await apiClient.getJobStatus(task.jobId);
+      // console.log("The task result is: ", task.result);
       
       // Check if status changed
       if (jobInfo.status !== task.status) {
@@ -63,12 +65,14 @@ export const useTaskPolling = (options: UseTaskPollingOptions = {}) => {
             // Try to get additional result info for download URL
             try {
               const resultInfo = await apiClient.getJobResultInfo(task.jobId);
+              console.log("The result info is: ", resultInfo);
+              console.log("The file format is: ", resultInfo.file_info.file_extension);
               if (resultInfo.mesh_download_urls) {
                 updatedTask.result = {
                   ...updatedTask.result,
                   downloadUrl: resultInfo.mesh_download_urls.direct_download,
                   fileSize: resultInfo.file_info.file_size_mb,
-                  format: resultInfo.file_info.file_format
+                  format: resultInfo.file_info.file_extension
                 };
               }
             } catch (err) {

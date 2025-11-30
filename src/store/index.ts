@@ -14,8 +14,10 @@ import {
   RenderMode,
   ModalType,
   ViewportTool,
-  TransformMode
+  TransformMode,
+  AuthState
 } from '../types/state';
+import { AuthStatus, UserInfo } from '../types/api';
 
 // Default state values
 const defaultSettings: AppSettings = {
@@ -78,7 +80,8 @@ const defaultUIState: UIState = {
     transformMode: 'world',
     gizmoVisible: true,
     snapToGrid: true,
-    gridSize: 0.2
+    gridSize: 0.2,
+    doubleSided: true
   },
   modal: {
     isOpen: false,
@@ -90,7 +93,8 @@ const defaultUIState: UIState = {
     isDragging: false,
     dragType: null,
     dragData: undefined
-  }
+  },
+  taskResultAsInput: null
 };
 
 const defaultSystemState: SystemState = {
@@ -111,6 +115,14 @@ const defaultTaskState: TaskState = {
   isPolling: false
 };
 
+const defaultAuthState: AuthState = {
+  isAuthenticated: false,
+  token: null,
+  user: null,
+  authStatus: null,
+  isCheckingAuth: false
+};
+
 const defaultState: AppState = {
   currentModule: 'mesh-generation',
   currentFeature: 'text-to-mesh',
@@ -119,7 +131,8 @@ const defaultState: AppState = {
   settings: initializeSettings(),
   tasks: defaultTaskState,
   ui: defaultUIState,
-  system: defaultSystemState
+  system: defaultSystemState,
+  auth: defaultAuthState
 };
 
 // Store interface with actions
@@ -141,6 +154,8 @@ interface StoreState extends AppState {
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   removeTask: (taskId: string) => void;
   clearCompletedTasks: () => void;
+  clearFailedTasks: () => void;
+  clearAllTasks: () => void;
   setTaskPolling: (polling: boolean) => void;
   initializeTasks: () => Promise<void>;
   loadTasksFromHistory: () => Promise<void>;
@@ -155,6 +170,7 @@ interface StoreState extends AppState {
   setGizmoVisible: (visible: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
   setGridSize: (size: number) => void;
+  setDoubleSided: (doubleSided: boolean) => void;
   
   // Viewport actions
   addModel: (model: LoadedModel) => void;
@@ -188,6 +204,19 @@ interface StoreState extends AppState {
   startDrag: (type: string, data: any) => void;
   endDrag: () => void;
   
+  // Task result as input actions
+  setTaskResultAsInput: (taskId: string | null) => void;
+  clearTaskResultAsInput: () => void;
+  
+  // Authentication actions
+  checkAuthStatus: () => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  logout: () => void;
+  setAuthToken: (token: string | null) => void;
+  setAuthUser: (user: UserInfo | null) => void;
+  loadSavedAuth: () => void;
+  
   // Utility actions
   reset: () => void;
 }
@@ -216,7 +245,9 @@ export const useStore = create<StoreState>()(
         'mesh-painting': 'text-painting',
         'mesh-segmentation': 'segment-mesh',
         'part-completion': 'complete-parts',
-        'auto-rigging': 'generate-rig'
+        'auto-rigging': 'generate-rig',
+        'mesh-retopology': 'retopologize-mesh',
+        'mesh-uv-unwrapping': 'unwrap-mesh'
       };
       set({ currentFeature: defaultFeatures[module] });
     },
@@ -277,9 +308,10 @@ export const useStore = create<StoreState>()(
       set((state) => {
         const newTasks = [...state.tasks.tasks, newTask];
         
-        // Save to localStorage
+        // Save to localStorage with user ID (if authenticated)
+        const userId = state.auth.user?.user_id;
         import('../services/taskPersistence').then(({ taskPersistence }) => {
-          taskPersistence.saveTasks(newTasks);
+          taskPersistence.saveTasks(newTasks, userId);
         });
 
         return {
@@ -305,9 +337,10 @@ export const useStore = create<StoreState>()(
         const newTasks = [...state.tasks.tasks];
         newTasks[taskIndex] = updatedTask;
 
-        // Save to localStorage
+        // Save to localStorage with user ID (if authenticated)
+        const userId = state.auth.user?.user_id;
         import('../services/taskPersistence').then(({ taskPersistence }) => {
-          taskPersistence.saveTasks(newTasks);
+          taskPersistence.saveTasks(newTasks, userId);
         });
 
         // Update active/completed/failed lists
@@ -341,11 +374,24 @@ export const useStore = create<StoreState>()(
 
     removeTask: (taskId: string) => {
       set((state) => {
+        // Find the task to get its jobId
+        const task = state.tasks.tasks.find(t => t.id === taskId);
+        
+        // Delete job from cloud database
+        if (task?.jobId) {
+          import('../api/client').then(({ getApiClient }) => {
+            getApiClient().deleteJob(task.jobId!).catch(error => {
+              console.error(`Failed to delete job ${task.jobId}:`, error);
+            });
+          });
+        }
+        
         const newTasks = state.tasks.tasks.filter(t => t.id !== taskId);
         
-        // Save to localStorage
+        // Save to localStorage with user ID
+        const userId = state.auth.user?.user_id;
         import('../services/taskPersistence').then(({ taskPersistence }) => {
-          taskPersistence.saveTasks(newTasks);
+          taskPersistence.saveTasks(newTasks, userId);
         });
 
         return {
@@ -363,11 +409,97 @@ export const useStore = create<StoreState>()(
     clearCompletedTasks: () => {
       set((state) => {
         const completedTaskIds = new Set(state.tasks.completedTasks);
+        
+        // Delete jobs from cloud database
+        const tasksToDelete = state.tasks.tasks.filter(t => completedTaskIds.has(t.id));
+        tasksToDelete.forEach(task => {
+          if (task.jobId) {
+            import('../api/client').then(({ getApiClient }) => {
+              getApiClient().deleteJob(task.jobId!).catch(error => {
+                console.error(`Failed to delete job ${task.jobId}:`, error);
+              });
+            });
+          }
+        });
+        
+        const newTasks = state.tasks.tasks.filter(t => !completedTaskIds.has(t.id));
+        
+        // Save to localStorage with user ID
+        const userId = state.auth.user?.user_id;
+        import('../services/taskPersistence').then(({ taskPersistence }) => {
+          taskPersistence.saveTasks(newTasks, userId);
+        });
+        
         return {
           tasks: {
             ...state.tasks,
-            tasks: state.tasks.tasks.filter(t => !completedTaskIds.has(t.id)),
+            tasks: newTasks,
             completedTasks: []
+          }
+        };
+      });
+    },
+
+    clearFailedTasks: () => {
+      set((state) => {
+        const failedTaskIds = new Set(state.tasks.failedTasks);
+        
+        // Delete jobs from cloud database
+        const tasksToDelete = state.tasks.tasks.filter(t => failedTaskIds.has(t.id));
+        tasksToDelete.forEach(task => {
+          if (task.jobId) {
+            import('../api/client').then(({ getApiClient }) => {
+              getApiClient().deleteJob(task.jobId!).catch(error => {
+                console.error(`Failed to delete job ${task.jobId}:`, error);
+              });
+            });
+          }
+        });
+        
+        const newTasks = state.tasks.tasks.filter(t => !failedTaskIds.has(t.id));
+        
+        // Save to localStorage with user ID
+        const userId = state.auth.user?.user_id;
+        import('../services/taskPersistence').then(({ taskPersistence }) => {
+          taskPersistence.saveTasks(newTasks, userId);
+        });
+        
+        return {
+          tasks: {
+            ...state.tasks,
+            tasks: newTasks,
+            failedTasks: []
+          }
+        };
+      });
+    },
+
+    clearAllTasks: () => {
+      set((state) => {
+        // Delete all jobs from cloud database
+        state.tasks.tasks.forEach(task => {
+          if (task.jobId) {
+            import('../api/client').then(({ getApiClient }) => {
+              getApiClient().deleteJob(task.jobId!).catch(error => {
+                console.error(`Failed to delete job ${task.jobId}:`, error);
+              });
+            });
+          }
+        });
+        
+        // Save to localStorage with user ID
+        const userId = state.auth.user?.user_id;
+        import('../services/taskPersistence').then(({ taskPersistence }) => {
+          taskPersistence.saveTasks([], userId);
+        });
+        
+        return {
+          tasks: {
+            ...state.tasks,
+            tasks: [],
+            activeTasks: [],
+            completedTasks: [],
+            failedTasks: []
           }
         };
       });
@@ -381,8 +513,16 @@ export const useStore = create<StoreState>()(
 
     initializeTasks: async () => {
       try {
+        const state = get();
         const { taskPersistence } = await import('../services/taskPersistence');
-        const tasks = await taskPersistence.initializeAndSync();
+        
+        // Get current user ID (undefined in anonymous mode)
+        const userId = state.auth.user?.user_id;
+        
+        // Initialize and sync tasks with user verification
+        const tasks = await taskPersistence.initializeAndSync(userId);
+        
+        console.log(`[Tasks] Initialized ${tasks.length} tasks for user ${userId || 'anonymous'}`);
         
         // Update the store with loaded/merged tasks
         set((state) => {
@@ -417,12 +557,14 @@ export const useStore = create<StoreState>()(
 
     loadTasksFromHistory: async () => {
       try {
+        const state = get();
         const { taskPersistence } = await import('../services/taskPersistence');
-        const currentTasks = get().tasks.tasks;
+        const currentTasks = state.tasks.tasks;
         const mergedTasks = await taskPersistence.mergeTasks(currentTasks);
         
-        // Save merged tasks back to localStorage
-        taskPersistence.saveTasks(mergedTasks);
+        // Save merged tasks back to localStorage with user ID
+        const userId = state.auth.user?.user_id;
+        taskPersistence.saveTasks(mergedTasks, userId);
         
         // Update the store
         set((state) => {
@@ -543,6 +685,15 @@ export const useStore = create<StoreState>()(
         ui: {
           ...state.ui,
           viewport: { ...state.ui.viewport, gridSize: size }
+        }
+      }));
+    },
+
+    setDoubleSided: (doubleSided: boolean) => {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          viewport: { ...state.ui.viewport, doubleSided }
         }
       }));
     },
@@ -899,6 +1050,25 @@ export const useStore = create<StoreState>()(
       }));
     },
 
+    // Task result as input actions
+    setTaskResultAsInput: (taskId: string | null) => {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          taskResultAsInput: taskId
+        }
+      }));
+    },
+
+    clearTaskResultAsInput: () => {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          taskResultAsInput: null
+        }
+      }));
+    },
+
     // Model analysis utilities
     analyzeModelSkeleton: (object3D: any) => {
       if (!object3D) return undefined;
@@ -1003,6 +1173,249 @@ export const useStore = create<StoreState>()(
       };
     },
 
+    // Authentication actions
+    checkAuthStatus: async () => {
+      set((state) => ({
+        auth: { ...state.auth, isCheckingAuth: true }
+      }));
+
+      try {
+        const { getApiClient } = await import('../api/client');
+        const apiClient = getApiClient();
+        const authStatus = await apiClient.getAuthStatus();
+        
+        set((state) => ({
+          auth: { 
+            ...state.auth, 
+            authStatus,
+            isCheckingAuth: false
+          }
+        }));
+      } catch (error) {
+        console.error('Failed to check auth status:', error);
+        set((state) => ({
+          auth: { 
+            ...state.auth, 
+            authStatus: null,
+            isCheckingAuth: false
+          }
+        }));
+      }
+    },
+
+    login: async (username: string, password: string) => {
+      try {
+        const { getApiClient } = await import('../api/client');
+        const apiClient = getApiClient();
+        const response = await apiClient.login({ username, password });
+        
+        console.log('[Auth] Login successful, token received:', response.token.substring(0, 20) + '...');
+        
+        // Check if cached tasks belong to a different user
+        const { taskPersistence } = await import('../services/taskPersistence');
+        const cachedUserId = taskPersistence.getCachedUserId();
+        
+        if (cachedUserId && cachedUserId !== response.user.user_id) {
+          console.log(`[Auth] Cached tasks belong to different user, clearing...`);
+          taskPersistence.clearTasks();
+          // Clear tasks in store as well
+          set((state) => ({
+            tasks: {
+              ...state.tasks,
+              tasks: [],
+              activeTasks: [],
+              completedTasks: [],
+              failedTasks: []
+            }
+          }));
+        }
+        
+        // Save auth data
+        const { authPersistence } = await import('../services/authPersistence');
+        authPersistence.saveAuth(response.token, response.user);
+        
+        // Update API client with token - this is critical!
+        apiClient.setAuthToken(response.token);
+        console.log('[Auth] Token set on API client');
+        
+        // Update store
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            isAuthenticated: true,
+            token: response.token,
+            user: response.user
+          }
+        }));
+
+        // Show success notification
+        get().addNotification({
+          type: 'success',
+          title: 'Login Successful',
+          message: `Welcome back, ${response.user.username}!`,
+          duration: 3000
+        });
+
+        // Load tasks for this user
+        await get().initializeTasks();
+      } catch (error: any) {
+        console.error('Login failed:', error);
+        get().addNotification({
+          type: 'error',
+          title: 'Login Failed',
+          message: error.message || 'Invalid credentials',
+          duration: 5000
+        });
+        throw error;
+      }
+    },
+
+    register: async (username: string, email: string, password: string) => {
+      try {
+        const { getApiClient } = await import('../api/client');
+        const apiClient = getApiClient();
+        const response = await apiClient.register({ username, email, password });
+        
+        console.log('[Auth] Registration successful, token received:', response.token.substring(0, 20) + '...');
+        
+        // Clear any existing cached tasks (new user shouldn't see old data)
+        const { taskPersistence } = await import('../services/taskPersistence');
+        taskPersistence.clearTasks();
+        
+        // Save auth data
+        const { authPersistence } = await import('../services/authPersistence');
+        authPersistence.saveAuth(response.token, response.user);
+        
+        // Update API client with token - this is critical!
+        apiClient.setAuthToken(response.token);
+        console.log('[Auth] Token set on API client');
+        
+        // Update store
+        set((state) => ({
+          auth: {
+            ...state.auth,
+            isAuthenticated: true,
+            token: response.token,
+            user: response.user
+          },
+          tasks: {
+            ...state.tasks,
+            tasks: [],
+            activeTasks: [],
+            completedTasks: [],
+            failedTasks: []
+          }
+        }));
+
+        // Show success notification
+        get().addNotification({
+          type: 'success',
+          title: 'Registration Successful',
+          message: `Welcome, ${response.user.username}!`,
+          duration: 3000
+        });
+
+        // Initialize tasks for new user (should be empty from backend)
+        await get().initializeTasks();
+      } catch (error: any) {
+        console.error('Registration failed:', error);
+        get().addNotification({
+          type: 'error',
+          title: 'Registration Failed',
+          message: error.message || 'Registration failed',
+          duration: 5000
+        });
+        throw error;
+      }
+    },
+
+    logout: () => {
+      console.log('[Auth] Logging out, clearing user data...');
+      
+      // Clear cached tasks (they belong to the logged out user)
+      import('../services/taskPersistence').then(({ taskPersistence }) => {
+        taskPersistence.clearTasks();
+      });
+      
+      // Clear persisted auth
+      import('../services/authPersistence').then(({ authPersistence }) => {
+        authPersistence.clearAuth();
+      });
+
+      // Clear API client token
+      import('../api/client').then(({ getApiClient }) => {
+        const apiClient = getApiClient();
+        apiClient.setAuthToken(null);
+      });
+
+      // Clear store auth state and tasks
+      set((state) => ({
+        auth: {
+          ...state.auth,
+          isAuthenticated: false,
+          token: null,
+          user: null
+        },
+        tasks: {
+          ...state.tasks,
+          tasks: [],
+          activeTasks: [],
+          completedTasks: [],
+          failedTasks: []
+        }
+      }));
+
+      // Show notification
+      get().addNotification({
+        type: 'info',
+        title: 'Logged Out',
+        message: 'You have been logged out successfully',
+        duration: 3000
+      });
+    },
+
+    setAuthToken: (token: string | null) => {
+      set((state) => ({
+        auth: { ...state.auth, token, isAuthenticated: !!token }
+      }));
+
+      // Update API client
+      import('../api/client').then(({ getApiClient }) => {
+        const apiClient = getApiClient();
+        apiClient.setAuthToken(token);
+      });
+    },
+
+    setAuthUser: (user: UserInfo | null) => {
+      set((state) => ({
+        auth: { ...state.auth, user }
+      }));
+    },
+
+    loadSavedAuth: () => {
+      import('../services/authPersistence').then(({ authPersistence }) => {
+        const savedAuth = authPersistence.loadAuth();
+        
+        if (savedAuth) {
+          // Update store
+          set((state) => ({
+            auth: {
+              ...state.auth,
+              isAuthenticated: true,
+              token: savedAuth.token,
+              user: savedAuth.user
+            }
+          }));
+
+          // Update API client
+          import('../api/client').then(({ getApiClient }) => {
+            const apiClient = getApiClient();
+            apiClient.setAuthToken(savedAuth.token);
+          });
+        }
+      });
+    },
+
     // Utility actions
     reset: () => {
       set(defaultState);
@@ -1038,6 +1451,8 @@ export const useStoreActions = () => {
     updateTask: store.updateTask,
     removeTask: store.removeTask,
     clearCompletedTasks: store.clearCompletedTasks,
+    clearFailedTasks: store.clearFailedTasks,
+    clearAllTasks: store.clearAllTasks,
     initializeTasks: store.initializeTasks,
     loadTasksFromHistory: store.loadTasksFromHistory,
     toggleLeftSidebar: store.toggleLeftSidebar,
@@ -1048,6 +1463,7 @@ export const useStoreActions = () => {
     setGizmoVisible: store.setGizmoVisible,
     setSnapToGrid: store.setSnapToGrid,
     setGridSize: store.setGridSize,
+    setDoubleSided: store.setDoubleSided,
     addModel: store.addModel,
     removeModel: store.removeModel,
     updateModel: store.updateModel,
@@ -1061,7 +1477,16 @@ export const useStoreActions = () => {
     closeModal: store.closeModal,
     addNotification: store.addNotification,
     removeNotification: store.removeNotification,
-    updateSystemStatus: store.updateSystemStatus
+    updateSystemStatus: store.updateSystemStatus,
+    setTaskResultAsInput: store.setTaskResultAsInput,
+    clearTaskResultAsInput: store.clearTaskResultAsInput,
+    checkAuthStatus: store.checkAuthStatus,
+    login: store.login,
+    register: store.register,
+    logout: store.logout,
+    setAuthToken: store.setAuthToken,
+    setAuthUser: store.setAuthUser,
+    loadSavedAuth: store.loadSavedAuth
   };
 };
 

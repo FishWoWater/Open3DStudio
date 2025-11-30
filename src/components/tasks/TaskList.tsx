@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Task } from '../../types/state';
 import TaskItem from './TaskItem';
 import ModelViewerModal from '../ui/ModelViewerModal';
-import { useSettings } from '../../store';
+import { useSettings, useStore } from '../../store';
 import { getFullApiUrl } from '../../utils/url';
 
 const TaskListContainer = styled.div`
@@ -35,8 +35,10 @@ const TaskList: React.FC<TaskListProps> = ({
 }) => {
   const { addModel } = require('../../store').useStoreActions();
   const { addNotification } = require('../../store').useStoreActions();
+  const { setTaskResultAsInput } = useStore();
   const settings = useSettings();
   const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<number>(0);
 
   // Sort tasks by createdAt (newest first)
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -66,6 +68,20 @@ const TaskList: React.FC<TaskListProps> = ({
     const task = tasks.find(t => t.id === taskId);
     if (!task || !task.result?.downloadUrl) return;
     setImportingTaskId(taskId);
+    setImportProgress(0);
+    const fullDownloadUrl = getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint);
+    if (!fullDownloadUrl) {
+      addNotification({
+        type: 'error',
+        title: 'Import Failed',
+        message: 'Invalid download URL',
+        duration: 4000
+      });
+      setImportingTaskId(null);
+      setImportProgress(0);
+      return;
+    }
+
     try {
       // Dynamically import Three.js loaders
       const THREE = await import('three');
@@ -74,48 +90,95 @@ const TaskList: React.FC<TaskListProps> = ({
       const { FBXLoader } = await import('three/examples/jsm/loaders/FBXLoader');
       const { PLYLoader } = await import('three/examples/jsm/loaders/PLYLoader');
 
-      const downloadUrl = getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint);
-      // Download the model file
-      const response = await fetch(downloadUrl || '');
-      if (!response.ok) throw new Error('Failed to download model');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const format = (task.result.format || 'glb').toLowerCase();
+      // Progress callback
+      const onProgress = (event: ProgressEvent) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setImportProgress(percentComplete);
+        } else {
+          // If we can't compute progress, show indeterminate progress
+          setImportProgress(50); // Show halfway as an indication of activity
+        }
+      };
+
+      // Determine format from URL or task result
+      let format = (task.result.format || 'glb').toLowerCase();
+      // Try to infer from URL if format not available
+      if (!task.result.format) {
+        const urlPath = task.result.downloadUrl.split('?')[0];
+        const extension = urlPath.split('.').pop()?.toLowerCase();
+        if (extension && ['glb', 'gltf', 'obj', 'fbx', 'ply'].includes(extension)) {
+          format = extension;
+        }
+      }
 
       let loader: any;
       let object: any;
+
       switch (format) {
         case 'glb':
         case 'gltf':
           loader = new GLTFLoader();
           object = await new Promise((resolve, reject) => {
-            loader.load(url, (gltf: any) => resolve(gltf.scene), undefined, reject);
+            loader.load(
+              fullDownloadUrl,
+              (gltf: any) => resolve(gltf.scene),
+              onProgress,
+              (error: any) => {
+                console.error('GLTF load error:', error);
+                reject(new Error(`Failed to load GLTF: ${error.message || 'Unknown error'}`));
+              }
+            );
           });
           break;
         case 'obj':
           loader = new OBJLoader();
           object = await new Promise((resolve, reject) => {
-            loader.load(url, (obj: any) => resolve(obj), undefined, reject);
+            loader.load(
+              fullDownloadUrl,
+              (obj: any) => resolve(obj),
+              onProgress,
+              (error: any) => {
+                console.error('OBJ load error:', error);
+                reject(new Error(`Failed to load OBJ: ${error.message || 'Unknown error'}`));
+              }
+            );
           });
           break;
         case 'fbx':
           loader = new FBXLoader();
           object = await new Promise((resolve, reject) => {
-            loader.load(url, (fbx: any) => resolve(fbx), undefined, reject);
+            loader.load(
+              fullDownloadUrl,
+              (fbx: any) => resolve(fbx),
+              onProgress,
+              (error: any) => {
+                console.error('FBX load error:', error);
+                reject(new Error(`Failed to load FBX: ${error.message || 'Unknown error'}`));
+              }
+            );
           });
           break;
         case 'ply':
           loader = new PLYLoader();
           object = await new Promise((resolve, reject) => {
-            loader.load(url, (geometry: any) => {
-              // Ensure geometry has proper normals for lighting
-              if (!geometry.attributes.normal) {
-                geometry.computeVertexNormals();
+            loader.load(
+              fullDownloadUrl,
+              (geometry: any) => {
+                // Ensure geometry has proper normals for lighting
+                if (!geometry.attributes.normal) {
+                  geometry.computeVertexNormals();
+                }
+                const material = new THREE.MeshLambertMaterial({ color: 0x888888 });
+                const mesh = new THREE.Mesh(geometry, material);
+                resolve(mesh);
+              },
+              onProgress,
+              (error: any) => {
+                console.error('PLY load error:', error);
+                reject(new Error(`Failed to load PLY: ${error.message || 'Unknown error'}`));
               }
-              const material = new THREE.MeshLambertMaterial({ color: 0x888888 });
-              const mesh = new THREE.Mesh(geometry, material);
-              resolve(mesh);
-            }, undefined, reject);
+            );
           });
           break;
         default:
@@ -135,7 +198,7 @@ const TaskList: React.FC<TaskListProps> = ({
       addModel({
         id: `imported_${task.id}_${Date.now()}`,
         name: task.name,
-        url: task.result.downloadUrl,
+        url: fullDownloadUrl,
         position: [0, 0, 0],
         rotation: [0, 0, 0],
         scale: [1, 1, 1],
@@ -151,6 +214,7 @@ const TaskList: React.FC<TaskListProps> = ({
         duration: 3000
       });
     } catch (err) {
+      console.error('Import error:', err);
       addNotification({
         type: 'error',
         title: 'Import Failed',
@@ -159,7 +223,31 @@ const TaskList: React.FC<TaskListProps> = ({
       });
     } finally {
       setImportingTaskId(null);
+      setImportProgress(0);
     }
+  };
+
+  const handleUseAsInput = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.result?.downloadUrl) {
+      addNotification({
+        type: 'error',
+        title: 'Cannot Use Result',
+        message: 'Task result is not available',
+        duration: 3000
+      });
+      return;
+    }
+
+    // Set the task result as input for the currently active panel
+    setTaskResultAsInput(taskId);
+
+    // addNotification({
+    //   type: 'success',
+    //   title: 'Result Loaded',
+    //   message: `Task result loaded as input for current panel`,
+    //   duration: 3000
+    // });
   };
 
   if (tasks.length === 0) {
@@ -184,7 +272,10 @@ const TaskList: React.FC<TaskListProps> = ({
           onDelete={onTaskDelete}
           onRetry={onTaskRetry}
           onDownload={handleDownload}
+          isImporting={importingTaskId === task.id}
+          importProgress={importingTaskId === task.id ? importProgress : 0}
           onImportToScene={handleImportToScene}
+          onUseAsInput={handleUseAsInput}
         />
       ))}
     </TaskListContainer>

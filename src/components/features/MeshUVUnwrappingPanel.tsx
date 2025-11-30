@@ -1,0 +1,710 @@
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import styled from 'styled-components';
+import { useStore } from '../../store';
+import { getApiClient } from '../../api/client';
+import Select, { SelectOption } from '../ui/Select';
+import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import { TaskType } from '../../types/state';
+import { JobStatus, MeshUVUnwrappingRequest, UVUnwrappingAvailableModels, UVPackMethods } from '../../types/api';
+import { getFullApiUrl } from '../../utils/url';
+
+const PanelContainer = styled.div`
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.secondary};
+  border-radius: ${props => props.theme.borderRadius.lg};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  height: 100%;
+  overflow-y: auto;
+`;
+
+const Header = styled.div`
+  margin-bottom: ${props => props.theme.spacing.lg};
+`;
+
+const Title = styled.h3`
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.lg};
+  font-weight: ${props => props.theme.typography.fontWeight.semibold};
+  margin-bottom: ${props => props.theme.spacing.sm};
+`;
+
+const Description = styled.p`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  line-height: ${props => props.theme.typography.lineHeight.relaxed};
+`;
+
+const FormSection = styled.div`
+  margin-bottom: ${props => props.theme.spacing.lg};
+`;
+
+const Label = styled.label`
+  display: block;
+  color: ${props => props.theme.colors.text.primary};
+  font-weight: ${props => props.theme.typography.fontWeight.medium};
+  margin-bottom: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+`;
+
+const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+  margin-bottom: ${props => props.theme.spacing.sm};
+`;
+
+const Checkbox = styled.input`
+  accent-color: ${props => props.theme.colors.primary[500]};
+`;
+
+const CheckboxLabel = styled.label`
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: pointer;
+`;
+
+const DropZone = styled.div<{ isDragOver: boolean; hasFile: boolean }>`
+  border: 2px dashed ${props => 
+    props.isDragOver ? props.theme.colors.primary[500] : 
+    props.hasFile ? props.theme.colors.success : 
+    props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.xl};
+  text-align: center;
+  cursor: pointer;
+  transition: all ${props => props.theme.transitions.fast};
+  background: ${props => props.isDragOver ? `${props.theme.colors.primary[500]}10` : 'transparent'};
+
+  &:hover {
+    border-color: ${props => props.theme.colors.primary[400]};
+    background: ${props => `${props.theme.colors.primary[500]}05`};
+  }
+`;
+
+const DropZoneText = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  margin-bottom: ${props => props.theme.spacing.sm};
+`;
+
+const FilePreview = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+`;
+
+const FileInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+  flex: 1;
+`;
+
+const FileIcon = styled.div`
+  font-size: 24px;
+`;
+
+const FileName = styled.div`
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  font-weight: ${props => props.theme.typography.fontWeight.medium};
+`;
+
+const FileSize = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+`;
+
+const RemoveButton = styled.button`
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
+  background: ${props => props.theme.colors.error};
+  color: white;
+  border: none;
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  cursor: pointer;
+  transition: all ${props => props.theme.transitions.fast};
+
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
+const ParameterGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${props => props.theme.spacing.md};
+`;
+
+const ProcessButton = styled.button<{ disabled: boolean }>`
+  width: 100%;
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.disabled ? props.theme.colors.gray[600] : props.theme.colors.primary[500]};
+  color: white;
+  border: none;
+  border-radius: ${props => props.theme.borderRadius.md};
+  font-weight: ${props => props.theme.typography.fontWeight.medium};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all ${props => props.theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    background: ${props => props.theme.colors.primary[600]};
+  }
+`;
+
+const ProgressBar = styled.div<{ progress: number }>`
+  width: 100%;
+  height: 4px;
+  background: ${props => props.theme.colors.gray[700]};
+  border-radius: 2px;
+  overflow: hidden;
+  margin: ${props => props.theme.spacing.sm} 0;
+
+  &::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: ${props => props.progress}%;
+    background: ${props => props.theme.colors.primary[500]};
+    transition: width ${props => props.theme.transitions.normal};
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: ${props => props.theme.colors.error};
+  background: ${props => `${props.theme.colors.error}15`};
+  border: 1px solid ${props => `${props.theme.colors.error}30`};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  margin-top: ${props => props.theme.spacing.sm};
+`;
+
+const InfoBox = styled.div`
+  color: ${props => props.theme.colors.primary[400]};
+  background: ${props => `${props.theme.colors.primary[500]}15`};
+  border: 1px solid ${props => `${props.theme.colors.primary[500]}30`};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  margin-bottom: ${props => props.theme.spacing.md};
+`;
+
+const LoadingSpinner = styled.div`
+  width: 16px;
+  height: 16px;
+  border: 2px solid ${props => props.theme.colors.border.default};
+  border-top: 2px solid ${props => props.theme.colors.primary[500]};
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const SliderContainer = styled.div`
+  width: 100%;
+`;
+
+const Slider = styled.input`
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: ${props => props.theme.colors.gray[700]};
+  outline: none;
+  -webkit-appearance: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: ${props => props.theme.colors.primary[500]};
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: ${props => props.theme.colors.primary[500]};
+    cursor: pointer;
+    border: none;
+  }
+`;
+
+const SliderValue = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  margin-top: ${props => props.theme.spacing.xs};
+  text-align: right;
+`;
+
+interface FormData {
+  meshFile: File | null;
+  uploadedMeshId: string | null;
+  outputFormat: 'obj' | 'glb';
+  distortionThreshold: number;
+  packMethod: 'blender';
+  saveIndividualParts: boolean;
+  saveVisuals: boolean;
+  modelPreference: string;
+}
+
+const outputFormatOptions: SelectOption[] = [
+  { value: 'obj', label: 'OBJ' },
+  { value: 'glb', label: 'GLB' }
+];
+
+const MeshUVUnwrappingPanel: React.FC = () => {
+  const { addTask, addNotification, ui, clearTaskResultAsInput, tasks, settings } = useStore();
+  const [formData, setFormData] = useState<FormData>({
+    meshFile: null,
+    uploadedMeshId: null,
+    outputFormat: 'obj',
+    distortionThreshold: 1.25,
+    packMethod: 'blender',
+    saveIndividualParts: true,
+    saveVisuals: false,
+    modelPreference: ''
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<UVUnwrappingAvailableModels | null>(null);
+  const [packMethods, setPackMethods] = useState<UVPackMethods | null>(null);
+  const [loadingModels, setLoadingModels] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Handle task result as input
+  useEffect(() => {
+    if (ui.taskResultAsInput) {
+      const task = tasks.tasks.find(t => t.id === ui.taskResultAsInput);
+      if (task?.result?.downloadUrl) {
+        const downloadUrl = getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint);
+        if (!downloadUrl) {
+          clearTaskResultAsInput();
+          return;
+        }
+        
+        setIsDownloading(true);
+        setError(null);
+        
+        fetch(downloadUrl)
+          .then(response => {
+            if (!response.ok) throw new Error(`Failed to download: ${response.statusText}`);
+            return response.blob();
+          })
+          .then(blob => {
+            let filename = 'mesh.obj';
+            const urlPath = task.result!.downloadUrl!.split('?')[0];
+            const urlParts = urlPath.split('/');
+            const lastPart = urlParts[urlParts.length - 1];
+            
+            if (lastPart && lastPart.includes('.')) {
+              filename = lastPart;
+            } else {
+              const extension = blob.type.includes('gltf') ? 'glb' : 
+                               blob.type.includes('obj') ? 'obj' : 'obj';
+              filename = `${task.name.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+            }
+            
+            const file = new File([blob], filename, { type: blob.type || 'model/obj' });
+            
+            setFormData(prev => ({
+              ...prev,
+              meshFile: file,
+              uploadedMeshId: null
+            }));
+            
+            setIsDownloading(false);
+            addNotification({
+              type: 'success',
+              title: 'Mesh Loaded',
+              message: `Successfully loaded mesh from task result`,
+              duration: 3000
+            });
+          })
+          .catch(error => {
+            console.error('Failed to download task result:', error);
+            setIsDownloading(false);
+            setError('Failed to download mesh from task result');
+            addNotification({
+              type: 'error',
+              title: 'Download Failed',
+              message: error instanceof Error ? error.message : 'Could not load mesh from task result',
+              duration: 4000
+            });
+          })
+          .finally(() => {
+            clearTaskResultAsInput();
+          });
+      } else {
+        clearTaskResultAsInput();
+      }
+    }
+  }, [ui.taskResultAsInput, tasks.tasks, clearTaskResultAsInput, settings.apiEndpoint, addNotification]);
+
+  // Fetch available models and pack methods on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const apiClient = getApiClient();
+        const [models, methods] = await Promise.all([
+          apiClient.getUVUnwrappingAvailableModels(),
+          apiClient.getUVUnwrappingPackMethods()
+        ]);
+        
+        setAvailableModels(models);
+        setPackMethods(methods);
+        
+        // Set default model preference
+        if (models.available_models.length > 0) {
+          setFormData(prev => ({ ...prev, modelPreference: models.available_models[0] }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        addNotification({
+          type: 'error',
+          title: 'Failed to Load Data',
+          message: 'Could not fetch available models and pack methods',
+          duration: 5000
+        });
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+
+    fetchData();
+  }, [addNotification]);
+
+  const modelPreferenceOptions: SelectOption[] = useMemo(() => {
+    if (!availableModels) return [];
+    return availableModels.available_models.map(model => ({
+      value: model,
+      label: availableModels.models_details[model]?.description || model
+    }));
+  }, [availableModels]);
+
+  const packMethodOptions: SelectOption[] = useMemo(() => {
+    if (!packMethods) return [];
+    return Object.keys(packMethods.pack_methods).map(method => ({
+      value: method,
+      label: `${method.charAt(0).toUpperCase() + method.slice(1)}`
+    }));
+  }, [packMethods]);
+
+  const handleInputChange = useCallback((field: keyof FormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError(null);
+  }, []);
+
+  const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
+    setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    setError(null);
+  }, []);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const validateForm = useCallback((): string | null => {
+    if (!formData.meshFile) {
+      return 'Please select a mesh file';
+    }
+
+    if (formData.meshFile.size > 100 * 1024 * 1024) {
+      return 'Mesh file must be smaller than 100MB';
+    }
+
+    if (formData.distortionThreshold < 1.0 || formData.distortionThreshold > 5.0) {
+      return 'Distortion threshold must be between 1.0 and 5.0';
+    }
+
+    return null;
+  }, [formData]);
+
+  const handleProcess = useCallback(async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      addNotification({
+        type: 'warning',
+        title: 'Invalid Input',
+        message: validationError,
+        duration: 4000
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setUploadProgress(0);
+    setError(null);
+
+    try {
+      const apiClient = getApiClient();
+      
+      // Upload mesh if not already uploaded
+      let meshFileId = formData.uploadedMeshId;
+      if (!meshFileId) {
+        const uploadResponse = await apiClient.uploadMeshFile(
+          formData.meshFile!,
+          (progress) => setUploadProgress(progress * 0.5)
+        );
+        meshFileId = uploadResponse.file_id;
+        handleInputChange('uploadedMeshId', meshFileId);
+      }
+
+      // Submit UV unwrapping job
+      const request: MeshUVUnwrappingRequest = {
+        mesh_file_id: meshFileId,
+        output_format: formData.outputFormat,
+        distortion_threshold: formData.distortionThreshold,
+        pack_method: formData.packMethod,
+        save_individual_parts: formData.saveIndividualParts,
+        save_visuals: formData.saveVisuals,
+        model_preference: formData.modelPreference
+      };
+
+      console.log('[DEBUG] Mesh UV unwrapping request:', request);
+      const response = await apiClient.unwrapMeshUV(request);
+
+      if (!response.job_id) {
+        throw new Error('Failed to start mesh UV unwrapping job');
+      }
+
+      setUploadProgress(100);
+
+      // Create task to track the job
+      const task = {
+        id: `task-${Date.now()}`,
+        jobId: response.job_id,
+        type: 'mesh-uv-unwrapping' as TaskType,
+        name: `UV Unwrapping: ${formData.meshFile!.name}`,
+        status: response.status as JobStatus,
+        createdAt: new Date(),
+        progress: 0,
+        inputData: {
+          files: [{
+            id: meshFileId,
+            name: formData.meshFile!.name,
+            type: formData.meshFile!.type,
+            size: formData.meshFile!.size
+          }],
+          parameters: {
+            outputFormat: formData.outputFormat,
+            distortionThreshold: formData.distortionThreshold,
+            packMethod: formData.packMethod,
+            saveIndividualParts: formData.saveIndividualParts,
+            saveVisuals: formData.saveVisuals,
+            modelPreference: formData.modelPreference
+          }
+        }
+      };
+
+      addTask(task);
+
+      addNotification({
+        type: 'success',
+        title: 'UV Unwrapping Started',
+        message: `Mesh UV unwrapping job submitted successfully. Job ID: ${response.job_id}`,
+        duration: 5000
+      });
+
+      setIsProcessing(false);
+      setUploadProgress(0);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to process mesh UV unwrapping');
+      setIsProcessing(false);
+      setUploadProgress(0);
+      
+      addNotification({
+        type: 'error',
+        title: 'UV Unwrapping Failed',
+        message: err instanceof Error ? err.message : 'Failed to process mesh UV unwrapping. Please try again.',
+        duration: 5000
+      });
+    }
+  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+
+  return (
+    <PanelContainer>
+      <Header>
+        <Title>Mesh UV Unwrapping</Title>
+        <Description>
+          Generate optimized UV coordinates for 3D meshes using part-based unwrapping.
+          Produces high-quality UV layouts with minimal distortion.
+        </Description>
+      </Header>
+
+      {loadingModels ? (
+        <FormSection>
+          <InfoBox style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LoadingSpinner />
+            Loading available models and pack methods...
+          </InfoBox>
+        </FormSection>
+      ) : !availableModels || availableModels.available_models.length === 0 ? (
+        <FormSection>
+          <ErrorMessage>
+            No UV unwrapping models available. Please check your API connection.
+          </ErrorMessage>
+        </FormSection>
+      ) : (
+        <>
+          <FormSection>
+            <Label>Mesh Upload</Label>
+            {isDownloading && (
+              <InfoBox style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ 
+                  width: '16px', 
+                  height: '16px', 
+                  border: '2px solid #4a9eff',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                Downloading mesh from task result...
+              </InfoBox>
+            )}
+            <MeshFileUploadWithPreview
+              value={formData.meshFile}
+              uploadedMeshId={formData.uploadedMeshId}
+              onChange={handleMeshChange}
+              acceptedFormats={['.obj', '.glb']}
+              maxSizeMB={100}
+            />
+          </FormSection>
+
+          <FormSection>
+            <Label>Model Preference</Label>
+            <Select
+              options={modelPreferenceOptions}
+              value={formData.modelPreference}
+              onChange={(value) => handleInputChange('modelPreference', value)}
+              placeholder="Select UV unwrapping model"
+            />
+            {formData.modelPreference && availableModels.models_details[formData.modelPreference] && (
+              <InfoBox style={{ marginTop: '8px' }}>
+                <strong>Method:</strong> {availableModels.models_details[formData.modelPreference].method}
+                <br />
+                {/* <strong>Features:</strong> {availableModels.models_details[formData.modelPreference].features.join(', ')} */}
+              </InfoBox>
+            )}
+          </FormSection>
+
+          <FormSection>
+            <Label>UV Parameters</Label>
+            <ParameterGrid>
+              <div>
+                <Label htmlFor="outputFormat">Output Format</Label>
+                <Select
+                  options={outputFormatOptions}
+                  value={formData.outputFormat}
+                  onChange={(value) => handleInputChange('outputFormat', value)}
+                  placeholder="Select output format"
+                />
+              </div>
+              <div>
+                <Label htmlFor="packMethod">Pack Method</Label>
+                <Select
+                  options={packMethodOptions}
+                  value={formData.packMethod}
+                  onChange={(value) => handleInputChange('packMethod', value)}
+                  placeholder="Select pack method"
+                />
+              </div>
+            </ParameterGrid>
+            {formData.packMethod && packMethods && (
+              <InfoBox style={{ marginTop: '8px' }}>
+                <strong>Description:</strong> {packMethods.pack_methods[formData.packMethod].description}
+                <br />
+                <strong>Speed:</strong> {packMethods.pack_methods[formData.packMethod].speed}
+              </InfoBox>
+            )}
+          </FormSection>
+
+          <FormSection>
+            <Label htmlFor="distortionThreshold">
+              Distortion Threshold: {formData.distortionThreshold.toFixed(2)}
+            </Label>
+            <SliderContainer>
+              <Slider
+                id="distortionThreshold"
+                type="range"
+                min="1.0"
+                max="5.0"
+                step="0.05"
+                value={formData.distortionThreshold}
+                onChange={(e) => handleInputChange('distortionThreshold', parseFloat(e.target.value))}
+              />
+              <SliderValue>
+                Lower = Less distortion, more seams | Higher = More distortion, fewer seams
+              </SliderValue>
+            </SliderContainer>
+          </FormSection>
+
+          {/* <FormSection>
+            <CheckboxContainer>
+              <Checkbox
+                id="saveIndividualParts"
+                type="checkbox"
+                checked={formData.saveIndividualParts}
+                onChange={(e) => handleInputChange('saveIndividualParts', e.target.checked)}
+              />
+              <CheckboxLabel htmlFor="saveIndividualParts">
+                Save individual part meshes
+              </CheckboxLabel>
+            </CheckboxContainer>
+            <CheckboxContainer>
+              <Checkbox
+                id="saveVisuals"
+                type="checkbox"
+                checked={formData.saveVisuals}
+                onChange={(e) => handleInputChange('saveVisuals', e.target.checked)}
+              />
+              <CheckboxLabel htmlFor="saveVisuals">
+                Save visualization images
+              </CheckboxLabel>
+            </CheckboxContainer>
+          </FormSection> */}
+
+          <FormSection>
+            <ProcessButton
+              disabled={isProcessing || isDownloading || !formData.meshFile || !formData.modelPreference}
+              onClick={handleProcess}
+            >
+              {isDownloading ? 'Downloading...' :
+               isProcessing ? 'Processing...' : 
+               !formData.meshFile ? 'Select Mesh File' :
+               !formData.modelPreference ? 'Select Model' :
+               'Start UV Unwrapping'}
+            </ProcessButton>
+            
+            {isProcessing && (
+              <ProgressBar progress={uploadProgress} />
+            )}
+            
+            {error && (
+              <ErrorMessage>{error}</ErrorMessage>
+            )}
+          </FormSection>
+        </>
+      )}
+    </PanelContainer>
+  );
+};
+
+export default MeshUVUnwrappingPanel;
+

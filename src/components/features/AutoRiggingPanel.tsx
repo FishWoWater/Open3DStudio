@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
+import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
 import { TaskType } from '../../types/state';
 import { JobStatus, AutoRiggingRequest } from '../../types/api';
+import { getFullApiUrl } from '../../utils/url';
 
 const PanelContainer = styled.div`
   padding: ${props => props.theme.spacing.md};
@@ -13,6 +15,11 @@ const PanelContainer = styled.div`
   border: 1px solid ${props => props.theme.colors.border.default};
   height: 100%;
   overflow-y: auto;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 `;
 
 const Header = styled.div`
@@ -154,7 +161,7 @@ interface FormData {
 }
 
 const AutoRiggingPanel: React.FC = () => {
-  const { addTask, addNotification } = useStore();
+  const { addTask, addNotification, ui, clearTaskResultAsInput, tasks, settings } = useStore();
   const [formData, setFormData] = useState<FormData>({
     meshFile: null,
     uploadedMeshId: null,
@@ -162,44 +169,100 @@ const AutoRiggingPanel: React.FC = () => {
     outputFormat: 'fbx',
     modelPreference: 'unirig_auto_rig'
   });
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isRigging, setIsRigging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Handle task result as input
+  useEffect(() => {
+    if (ui.taskResultAsInput) {
+      const task = tasks.tasks.find(t => t.id === ui.taskResultAsInput);
+      if (task?.result?.downloadUrl) {
+        const downloadUrl = getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint);
+        if (!downloadUrl) {
+          clearTaskResultAsInput();
+          return;
+        }
+        
+        // Show loading state
+        setIsDownloading(true);
+        setError(null);
+        
+        // Download the mesh file and convert it to a File object
+        fetch(downloadUrl)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Failed to download: ${response.statusText}`);
+            }
+            return response.blob();
+          })
+          .then(blob => {
+            // Extract filename from URL, handling query parameters
+            let filename = 'mesh.glb';
+            const urlPath = task.result!.downloadUrl!.split('?')[0]; // Remove query params
+            const urlParts = urlPath.split('/');
+            const lastPart = urlParts[urlParts.length - 1];
+            
+            if (lastPart && lastPart.includes('.')) {
+              filename = lastPart;
+            } else {
+              // Infer extension from blob type or use default
+              const extension = blob.type.includes('gltf') ? 'glb' : 
+                               blob.type.includes('obj') ? 'obj' :
+                               blob.type.includes('fbx') ? 'fbx' :
+                               blob.type.includes('ply') ? 'ply' : 'glb';
+              filename = `${task.name.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+            }
+            
+            // Create a File object from the blob
+            const file = new File([blob], filename, { type: blob.type || 'model/gltf-binary' });
+            
+            setFormData(prev => ({
+              ...prev,
+              meshFile: file,
+              uploadedMeshId: null // Will be set after upload
+            }));
+            
+            setIsDownloading(false);
+            
+            // Show success notification
+            addNotification({
+              type: 'success',
+              title: 'Mesh Loaded',
+              message: `Successfully loaded mesh from task result`,
+              duration: 3000
+            });
+          })
+          .catch(error => {
+            console.error('Failed to download task result:', error);
+            setIsDownloading(false);
+            setError('Failed to download mesh from task result');
+            addNotification({
+              type: 'error',
+              title: 'Download Failed',
+              message: error instanceof Error ? error.message : 'Could not load mesh from task result',
+              duration: 4000
+            });
+          })
+          .finally(() => {
+            clearTaskResultAsInput();
+          });
+      } else {
+        clearTaskResultAsInput();
+      }
+    }
+  }, [ui.taskResultAsInput, tasks.tasks, clearTaskResultAsInput, settings.apiEndpoint, addNotification]);
 
   const handleInputChange = useCallback((field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
   }, []);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const meshFile = files.find(file => 
-      file.name.endsWith('.glb') || 
-      file.name.endsWith('.obj') || 
-      file.name.endsWith('.fbx') ||
-      file.name.endsWith('.ply') ||
-      file.name.endsWith('.dae')
-    );
-    
-    if (meshFile) {
-      handleInputChange('meshFile', meshFile);
-      handleInputChange('uploadedMeshId', null); // Reset uploaded ID
-    } else {
-      setError('Please select a valid character mesh file (GLB, OBJ, FBX, PLY, DAE)');
-    }
-  }, [handleInputChange]);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleInputChange('meshFile', file);
-      handleInputChange('uploadedMeshId', null); // Reset uploaded ID
-    }
-  }, [handleInputChange]);
+  const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
+    setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    setError(null);
+  }, []);
 
   const validateForm = useCallback((): string | null => {
     if (!formData.meshFile) {
@@ -315,38 +378,27 @@ const AutoRiggingPanel: React.FC = () => {
 
       <FormSection>
         <Label>Character Mesh Upload (Required)</Label>
-        <DropZone
-          isDragOver={isDragOver}
-          hasFile={!!formData.meshFile}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleFileDrop}
-          onClick={() => document.getElementById('meshInput')?.click()}
-        >
-          <DropZoneText>
-            {formData.meshFile 
-              ? `Selected: ${formData.meshFile.name}`
-              : 'Drag & drop a character mesh here, or click to select'
-            }
-          </DropZoneText>
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            Supported: GLB, OBJ, FBX, PLY, DAE (max 200MB)
-          </div>
-          {formData.meshFile && (
-            <FileInfo>
-              Size: {(formData.meshFile.size / 1024 / 1024).toFixed(2)} MB
-            </FileInfo>
-          )}
-        </DropZone>
-        <input
-          id="meshInput"
-          type="file"
-          accept=".glb,.obj,.fbx,.ply,.dae"
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
+        {isDownloading && (
+          <InfoBox>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ 
+                width: '16px', 
+                height: '16px', 
+                border: '2px solid #4a9eff',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Downloading mesh from task result...
+            </div>
+          </InfoBox>
+        )}
+        <MeshFileUploadWithPreview
+          value={formData.meshFile}
+          uploadedMeshId={formData.uploadedMeshId}
+          onChange={handleMeshChange}
+          acceptedFormats={['.glb', '.obj', '.fbx', '.ply', '.dae']}
+          maxSizeMB={200}
         />
       </FormSection>
 
@@ -387,10 +439,10 @@ const AutoRiggingPanel: React.FC = () => {
 
       <FormSection>
         <RigButton
-          disabled={isRigging}
+          disabled={isRigging || isDownloading}
           onClick={handleRig}
         >
-          {isRigging ? 'Processing...' : 'Generate Character Rig'}
+          {isRigging ? 'Processing...' : isDownloading ? 'Downloading...' : 'Generate Character Rig'}
         </RigButton>
         
         {isRigging && (

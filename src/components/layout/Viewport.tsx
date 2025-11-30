@@ -208,6 +208,22 @@ const Scene: React.FC = () => {
     return [center.x, center.y, center.z] as [number, number, number];
   }, [viewport.loadedModels]);
 
+  // Get average scale of selected objects for gizmo sizing
+  const selectionScale = useMemo(() => {
+    const selectedModels = viewport.loadedModels.filter(m => m.selected);
+    if (selectedModels.length === 0) return [1, 1, 1] as [number, number, number];
+    
+    let totalScale = [0, 0, 0];
+    selectedModels.forEach(model => {
+      totalScale[0] += model.scale[0];
+      totalScale[1] += model.scale[1];
+      totalScale[2] += model.scale[2];
+    });
+    
+    const count = selectedModels.length;
+    return [totalScale[0] / count, totalScale[1] / count, totalScale[2] / count] as [number, number, number];
+  }, [viewport.loadedModels]);
+
   return (
     <>
       {/* Lighting */}
@@ -252,6 +268,7 @@ const Scene: React.FC = () => {
           key={model.id}
           model={model}
           renderMode={viewport.renderMode}
+          doubleSided={viewport.doubleSided}
           onRef={(ref: THREE.Group | null) => {
             if (ref) {
               ref.userData.modelId = model.id;
@@ -266,6 +283,7 @@ const Scene: React.FC = () => {
       {viewport.selection.length > 0 && viewport.gizmoVisible && (
         <TransformGizmo
           position={selectionCenter}
+          objectScale={selectionScale}
           tool={viewport.currentTool}
           transformMode={viewport.transformMode}
           visible={!viewport.isTransforming}
