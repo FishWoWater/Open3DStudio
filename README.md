@@ -23,7 +23,7 @@ The supported workflows include text-to-3d, image-to-3d, mesh segmentation, text
 ## Demo 
 You can have a try on [Vercel Deployment](https://open3dstudio-n5hap1p9y-fishwowaters-projects.vercel.app) or download the shipped applications from [Releases](https://github.com/FishWoWater/Open3DStudio/releases). Notice that you need to deploy the API backend on your own machine or server. 
 
-![demo](./assets/open3dstudio_v1.0_demo_65m.gif)
+![demo](./assets/open3dstudio_v1.0_demo_41m.gif)
 For higher-quality video demo, please check [youtube](https://youtu.be/LNteOF3XmmI).
 
 ## Supported 3DAIGC Modules
