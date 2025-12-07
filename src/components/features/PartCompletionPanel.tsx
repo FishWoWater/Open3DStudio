@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
+import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
 import { TaskType } from '../../types/state';
 import { JobStatus, PartCompletionRequest } from '../../types/api';
+import { getFullApiUrl } from '../../utils/url';
 
 const PanelContainer = styled.div`
   padding: ${props => props.theme.spacing.md};
@@ -55,36 +57,6 @@ const outputFormatOptions: SelectOption[] = [
 const modelPreferenceOptions: SelectOption[] = [
   { value: 'holopart_part_completion', label: 'HoloPart (Default)' }
 ];
-
-const DropZone = styled.div<{ isDragOver: boolean; hasFile: boolean }>`
-  border: 2px dashed ${props => 
-    props.isDragOver ? props.theme.colors.primary[500] : 
-    props.hasFile ? props.theme.colors.success : 
-    props.theme.colors.border.default};
-  border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.xl};
-  text-align: center;
-  cursor: pointer;
-  transition: all ${props => props.theme.transitions.fast};
-  background: ${props => props.isDragOver ? `${props.theme.colors.primary[500]}10` : 'transparent'};
-
-  &:hover {
-    border-color: ${props => props.theme.colors.primary[400]};
-    background: ${props => `${props.theme.colors.primary[500]}05`};
-  }
-`;
-
-const DropZoneText = styled.div`
-  color: ${props => props.theme.colors.text.secondary};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  margin-bottom: ${props => props.theme.spacing.sm};
-`;
-
-const FileInfo = styled.div`
-  color: ${props => props.theme.colors.text.primary};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  margin-top: ${props => props.theme.spacing.sm};
-`;
 
 const CompleteButton = styled.button<{ disabled: boolean }>`
   width: 100%;
@@ -149,51 +121,108 @@ interface FormData {
 }
 
 const PartCompletionPanel: React.FC = () => {
-  const { addTask, addNotification } = useStore();
+  const { addTask, addNotification, ui, clearTaskResultAsInput, tasks, settings } = useStore();
   const [formData, setFormData] = useState<FormData>({
     meshFile: null,
     uploadedMeshId: null,
     outputFormat: 'glb',
     modelPreference: 'holopart_part_completion'
   });
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Use refs to store uploaded file IDs persistently across renders
+  const uploadedMeshIdRef = React.useRef<string | null>(null);
+  const currentMeshFileRef = React.useRef<File | null>(null);
+
+  // Handle task result as input
+  useEffect(() => {
+    if (ui.taskResultAsInput) {
+      const task = tasks.tasks.find(t => t.id === ui.taskResultAsInput);
+      if (task?.result?.downloadUrl) {
+        const downloadUrl = getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint);
+        if (!downloadUrl) {
+          clearTaskResultAsInput();
+          return;
+        }
+        
+        setIsDownloading(true);
+        setError(null);
+        
+        fetch(downloadUrl)
+          .then(response => {
+            if (!response.ok) throw new Error(`Failed to download: ${response.statusText}`);
+            return response.blob();
+          })
+          .then(blob => {
+            let filename = 'mesh.glb';
+            const urlPath = task.result!.downloadUrl!.split('?')[0];
+            const urlParts = urlPath.split('/');
+            const lastPart = urlParts[urlParts.length - 1];
+            
+            if (lastPart && lastPart.includes('.')) {
+              filename = lastPart;
+            } else {
+              const extension = blob.type.includes('gltf') ? 'glb' : 
+                               blob.type.includes('obj') ? 'obj' :
+                               blob.type.includes('fbx') ? 'fbx' :
+                               blob.type.includes('ply') ? 'ply' : 'glb';
+              filename = `${task.name.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+            }
+            
+            const file = new File([blob], filename, { type: blob.type || 'model/gltf-binary' });
+            
+            setFormData(prev => ({
+              ...prev,
+              meshFile: file,
+              uploadedMeshId: null
+            }));
+            
+            // Reset mesh refs when loading from task result
+            uploadedMeshIdRef.current = null;
+            currentMeshFileRef.current = file;
+            
+            setIsDownloading(false);
+            addNotification({
+              type: 'success',
+              title: 'Mesh Loaded',
+              message: `Successfully loaded mesh from task result`,
+              duration: 3000
+            });
+          })
+          .catch(error => {
+            console.error('Failed to download task result:', error);
+            setIsDownloading(false);
+            setError('Failed to download mesh from task result');
+            addNotification({
+              type: 'error',
+              title: 'Download Failed',
+              message: error instanceof Error ? error.message : 'Could not load mesh from task result',
+              duration: 4000
+            });
+          })
+          .finally(() => {
+            clearTaskResultAsInput();
+          });
+      } else {
+        clearTaskResultAsInput();
+      }
+    }
+  }, [ui.taskResultAsInput, tasks.tasks, clearTaskResultAsInput, settings.apiEndpoint, addNotification]);
 
   const handleInputChange = useCallback((field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
   }, []);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const meshFile = files.find(file => 
-      file.name.endsWith('.glb') || 
-      file.name.endsWith('.obj') || 
-      file.name.endsWith('.fbx') ||
-      file.name.endsWith('.ply') ||
-      file.name.endsWith('.stl')
-    );
-    
-    if (meshFile) {
-      handleInputChange('meshFile', meshFile);
-      handleInputChange('uploadedMeshId', null); // Reset uploaded ID
-    } else {
-      setError('Please select a valid 3D mesh file (GLB, OBJ, FBX, PLY, STL)');
-    }
-  }, [handleInputChange]);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleInputChange('meshFile', file);
-      handleInputChange('uploadedMeshId', null); // Reset uploaded ID
-    }
-  }, [handleInputChange]);
+  const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
+    setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    uploadedMeshIdRef.current = null; // Reset ref when file changes
+    currentMeshFileRef.current = file;
+    setError(null);
+  }, []);
 
   const validateForm = useCallback((): string | null => {
     if (!formData.meshFile) {
@@ -221,15 +250,24 @@ const PartCompletionPanel: React.FC = () => {
     try {
       const apiClient = getApiClient();
       
-      // Upload mesh file if not already uploaded
-      let meshFileId = formData.uploadedMeshId;
-      if (!meshFileId) {
+      // Check if we have a cached file ID for the current mesh file
+      let meshFileId = uploadedMeshIdRef.current;
+      // Compare files by properties instead of reference to handle file object recreation
+      const isSameMesh = currentMeshFileRef.current && formData.meshFile &&
+        currentMeshFileRef.current.name === formData.meshFile.name &&
+        currentMeshFileRef.current.size === formData.meshFile.size &&
+        currentMeshFileRef.current.lastModified === formData.meshFile.lastModified;
+      
+      // Upload mesh file if not already uploaded or if file changed
+      if (!meshFileId || !isSameMesh) {
         const uploadResponse = await apiClient.uploadMeshFile(
           formData.meshFile!,
           (progress) => setUploadProgress(progress * 0.8) // 80% for upload
         );
         meshFileId = uploadResponse.file_id;
-        handleInputChange('uploadedMeshId', meshFileId);
+        uploadedMeshIdRef.current = meshFileId; // Store in ref for immediate reuse
+        currentMeshFileRef.current = formData.meshFile;
+        handleInputChange('uploadedMeshId', meshFileId); // Also update state for UI
       }
 
       // Create part completion request
@@ -253,7 +291,7 @@ const PartCompletionPanel: React.FC = () => {
         id: `task-${Date.now()}`,
         jobId: response.job_id,
         type: 'part-completion' as TaskType,
-        name: `Part Completion: ${formData.meshFile!.name}`,
+        name: `${formData.meshFile!.name}`,
         status: response.status as JobStatus,
         createdAt: new Date(),
         progress: 0,
@@ -308,38 +346,27 @@ const PartCompletionPanel: React.FC = () => {
 
       <FormSection>
         <Label>Incomplete Mesh Upload (Required)</Label>
-        <DropZone
-          isDragOver={isDragOver}
-          hasFile={!!formData.meshFile}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleFileDrop}
-          onClick={() => document.getElementById('meshInput')?.click()}
-        >
-          <DropZoneText>
-            {formData.meshFile 
-              ? `Selected: ${formData.meshFile.name}`
-              : 'Drag & drop an incomplete 3D mesh here, or click to select'
-            }
-          </DropZoneText>
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            Supported: GLB, OBJ, FBX, PLY, STL (max 200MB)
-          </div>
-          {formData.meshFile && (
-            <FileInfo>
-              Size: {(formData.meshFile.size / 1024 / 1024).toFixed(2)} MB
-            </FileInfo>
-          )}
-        </DropZone>
-        <input
-          id="meshInput"
-          type="file"
-          accept=".glb,.obj,.fbx,.ply,.stl"
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
+        {isDownloading && (
+          <InfoBox>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ 
+                width: '16px', 
+                height: '16px', 
+                border: '2px solid #4a9eff',
+                borderTop: '2px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Downloading mesh from task result...
+            </div>
+          </InfoBox>
+        )}
+        <MeshFileUploadWithPreview
+          value={formData.meshFile}
+          uploadedMeshId={formData.uploadedMeshId}
+          onChange={handleMeshChange}
+          acceptedFormats={['.glb', '.obj', '.fbx', '.ply', '.stl']}
+          maxSizeMB={200}
         />
       </FormSection>
 
@@ -368,10 +395,10 @@ const PartCompletionPanel: React.FC = () => {
 
       <FormSection>
         <CompleteButton
-          disabled={isCompleting}
+          disabled={isCompleting || isDownloading}
           onClick={handleComplete}
         >
-          {isCompleting ? 'Processing...' : 'Complete Missing Parts'}
+          {isCompleting ? 'Processing...' : isDownloading ? 'Downloading...' : 'Complete Missing Parts'}
         </CompleteButton>
         
         {isCompleting && (

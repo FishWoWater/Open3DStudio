@@ -27,6 +27,8 @@ const FEATURE_NAME_MAPPING: Record<string, string> = {
   'image-to-raw-mesh': 'image_to_raw_mesh',
   'image-to-textured-mesh': 'image_to_textured_mesh',
   'mesh-painting': 'mesh_painting',
+  'text-mesh-painting': 'text_mesh_painting',
+  'image-mesh-painting': 'image_mesh_painting',
   'mesh-segmentation': 'mesh_segmentation',
   'auto-rigging': 'auto_rigging',
   'part-completion': 'part_completion'

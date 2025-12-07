@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { Task } from '../../types/state';
 import { formatDistanceToNow } from 'date-fns';
 import { useSettings } from '../../store';
 import { getFullApiUrl } from '../../utils/url';
+import { cleanModelName } from '../../utils/modelNames';
 import TaskModelPreview from './TaskModelPreview';
+
+// Helper function to abbreviate time units
+const abbreviateTime = (timeString: string): string => {
+  return timeString
+    .replace(/\bseconds?\b/g, 'sec')
+    .replace(/\bminutes?\b/g, 'mins')
+    .replace(/\bhours?\b/g, 'hrs')
+    .replace(/\bdays?\b/g, 'd')
+    .replace(/\bmonths?\b/g, 'mo')
+    .replace(/\byears?\b/g, 'y')
+    .replace(/\bless than?\b/g, '<');
+};
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -314,6 +327,19 @@ const ImportProgressText = styled.div`
   }
 `;
 
+const PreviewPlaceholder = styled.div`
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: ${props => props.theme.borderRadius.md};
+  margin-bottom: ${props => props.theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${props => props.theme.colors.text.muted};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+`;
+
 interface TaskItemProps {
   task: Task;
   onClick: (task: Task) => void;
@@ -340,7 +366,41 @@ const TaskItem: React.FC<TaskItemProps> = ({
   importProgress = 0
 }) => {
   const [promptExpanded, setPromptExpanded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const settings = useSettings();
+
+  // Intersection Observer to detect visibility
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            // Once visible, we can stop observing (model stays loaded)
+            // Comment out the next line if you want to unload when out of view
+            // observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        // Start loading when the item is 100px away from viewport
+        rootMargin: '100px',
+        threshold: 0.01
+      }
+    );
+
+    const currentCard = cardRef.current;
+    if (currentCard) {
+      observer.observe(currentCard);
+    }
+
+    return () => {
+      if (currentCard) {
+        observer.unobserve(currentCard);
+      }
+    };
+  }, []);
 
   const getFullPreviewImageUrl = (url?: string) => {
     return getFullApiUrl(url, settings.apiEndpoint);
@@ -384,11 +444,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const inputImages = task.inputData.files?.filter(file => file.type.startsWith('image/')) || [];
   const hasPreviewImage = task.result?.previewImageUrl;
   
+  // If we have a persistent inputImageUrl from the API, prefer it over blob URLs
+  // This ensures images persist across page refreshes
+  const hasInputImageUrl = !!task.inputImageUrl;
+  
   // Don't show input images for text-to-mesh tasks since they're text-based
-  const shouldShowInputImages = !task.type.includes('text-to-mesh') && inputImages.length > 0;
+  const shouldShowInputImages = !task.type.includes('text-to-mesh') && (hasInputImageUrl || inputImages.length > 0);
 
   return (
-    <TaskCard status={task.status} onClick={handleCardClick}>
+    <TaskCard ref={cardRef} status={task.status} onClick={handleCardClick}>
       <TaskHeader>
         <TaskTitle title={task.name.length > 30 ? task.name : undefined}>
           {task.name.length > 30 ? task.name.substring(0, 27) + '...' : task.name}
@@ -399,11 +463,18 @@ const TaskItem: React.FC<TaskItemProps> = ({
       </TaskHeader>
 
       <TaskMeta>
-        <TaskType>{formatTaskType(task.type)}</TaskType>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <TaskType>{formatTaskType(task.type)}</TaskType>
+          {task.modelPreference && (
+            <TaskType style={{ background: `${task.status === 'completed' ? '#10b981' : '#6b7280'}20`, color: task.status === 'completed' ? '#10b981' : '#9ca3af' }}>
+              {cleanModelName(task.modelPreference).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </TaskType>
+          )}
+        </div>
         <TimeInfo>
-          <div>Created {formatDistanceToNow(task.createdAt, { addSuffix: true })}</div>
+          <div>Begin: {abbreviateTime(formatDistanceToNow(task.createdAt, { addSuffix: true }))}</div>
           {task.completedAt && (
-            <div>Completed {formatDistanceToNow(task.completedAt, { addSuffix: true })}</div>
+            <div>Done: {abbreviateTime(formatDistanceToNow(task.completedAt, { addSuffix: true }))}</div>
           )}
           {task.processingTime && (
             <div>Processing time: {task.processingTime.toFixed(1)}s</div>
@@ -441,36 +512,65 @@ const TaskItem: React.FC<TaskItemProps> = ({
       {(shouldShowInputImages || hasPreviewImage) && (
         <ImageGallery>
           {/* Input Images - Only show for non-text-to-mesh tasks */}
-          {shouldShowInputImages && inputImages.map((file, index) => {
-            const thumbnailUrl = getImageThumbnail(file);
-            return (
-              <ImageThumbnail key={`input-${index}`}>
-                {thumbnailUrl ? (
-                  <ThumbnailImage src={thumbnailUrl} alt={file.name} />
-                ) : (
-                  <ThumbnailPlaceholder>🖼️</ThumbnailPlaceholder>
-                )}
-                <ThumbnailLabel>Input</ThumbnailLabel>
-              </ImageThumbnail>
-            );
-          })}
+          {shouldShowInputImages && (
+            <>
+              {/* Prefer persistent inputImageUrl from API over ephemeral blob URLs */}
+              {hasInputImageUrl ? (
+                <ImageThumbnail key="input-api">
+                  <ThumbnailImage 
+                    src={getFullPreviewImageUrl(task.inputImageUrl)} 
+                    alt="Input image"
+                    loading="lazy"
+                  />
+                  <ThumbnailLabel>Input</ThumbnailLabel>
+                </ImageThumbnail>
+              ) : (
+                /* Fallback to blob URLs from files (only available before refresh) */
+                inputImages.map((file, index) => {
+                  const thumbnailUrl = getImageThumbnail(file);
+                  return (
+                    <ImageThumbnail key={`input-${index}`}>
+                      {thumbnailUrl ? (
+                        <ThumbnailImage src={thumbnailUrl} alt={file.name} loading="lazy" />
+                      ) : (
+                        <ThumbnailPlaceholder>🖼️</ThumbnailPlaceholder>
+                      )}
+                      <ThumbnailLabel>Input</ThumbnailLabel>
+                    </ImageThumbnail>
+                  );
+                })
+              )}
+            </>
+          )}
 
           {/* Preview Image (when completed) */}
           {hasPreviewImage && (
             <ImageThumbnail>
-              <ThumbnailImage src={getFullPreviewImageUrl(task.result!.previewImageUrl)} alt="Preview" />
+              <ThumbnailImage 
+                src={getFullPreviewImageUrl(task.result!.previewImageUrl)} 
+                alt="Preview"
+                loading="lazy"
+              />
               <ThumbnailLabel>Preview</ThumbnailLabel>
             </ImageThumbnail>
           )}
         </ImageGallery>
       )}
 
-      {/* 3D Model Preview - Show for completed tasks with downloadUrl */}
+      {/* 3D Model Preview - Show for completed tasks with downloadUrl, but only when visible */}
       {task.status === 'completed' && task.result?.downloadUrl && (
-        <TaskModelPreview
-          downloadUrl={getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint) || ''}
-          format={task.result.format}
-        />
+        <>
+          {isVisible ? (
+            <TaskModelPreview
+              downloadUrl={getFullApiUrl(task.result.downloadUrl, settings.apiEndpoint) || ''}
+              format={task.result.format}
+            />
+          ) : (
+            <PreviewPlaceholder>
+              <i className="fas fa-cube"></i>&nbsp; 3D Preview (scroll to load)
+            </PreviewPlaceholder>
+          )}
+        </>
       )}
 
       {/* Progress Bar */}

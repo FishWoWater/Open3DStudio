@@ -60,7 +60,7 @@ const rigModeOptions: SelectOption[] = [
 
 const outputFormatOptions: SelectOption[] = [
   { value: 'fbx', label: 'FBX' },
-  { value: 'glb', label: 'GLB' }
+  // { value: 'glb', label: 'GLB' }
 ];
 
 const modelPreferenceOptions: SelectOption[] = [
@@ -156,7 +156,7 @@ interface FormData {
   meshFile: File | null;
   uploadedMeshId: string | null;
   rigMode: 'skeleton' | 'skin' | 'full';
-  outputFormat: 'fbx' | 'glb';
+  outputFormat: 'fbx';
   modelPreference?: string;
 }
 
@@ -173,6 +173,10 @@ const AutoRiggingPanel: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Use refs to store uploaded file IDs persistently across renders
+  const uploadedMeshIdRef = React.useRef<string | null>(null);
+  const currentMeshFileRef = React.useRef<File | null>(null);
 
   // Handle task result as input
   useEffect(() => {
@@ -224,6 +228,10 @@ const AutoRiggingPanel: React.FC = () => {
               uploadedMeshId: null // Will be set after upload
             }));
             
+            // Reset mesh refs when loading from task result
+            uploadedMeshIdRef.current = null;
+            currentMeshFileRef.current = file;
+            
             setIsDownloading(false);
             
             // Show success notification
@@ -261,6 +269,8 @@ const AutoRiggingPanel: React.FC = () => {
 
   const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
     setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    uploadedMeshIdRef.current = null; // Reset ref when file changes
+    currentMeshFileRef.current = file;
     setError(null);
   }, []);
 
@@ -290,15 +300,24 @@ const AutoRiggingPanel: React.FC = () => {
     try {
       const apiClient = getApiClient();
       
-      // Upload mesh file if not already uploaded
-      let meshFileId = formData.uploadedMeshId;
-      if (!meshFileId) {
+      // Check if we have a cached file ID for the current mesh file
+      let meshFileId = uploadedMeshIdRef.current;
+      // Compare files by properties instead of reference to handle file object recreation
+      const isSameMesh = currentMeshFileRef.current && formData.meshFile &&
+        currentMeshFileRef.current.name === formData.meshFile.name &&
+        currentMeshFileRef.current.size === formData.meshFile.size &&
+        currentMeshFileRef.current.lastModified === formData.meshFile.lastModified;
+      
+      // Upload mesh file if not already uploaded or if file changed
+      if (!meshFileId || !isSameMesh) {
         const uploadResponse = await apiClient.uploadMeshFile(
           formData.meshFile!,
           (progress) => setUploadProgress(progress * 0.8) // 80% for upload
         );
         meshFileId = uploadResponse.file_id;
-        handleInputChange('uploadedMeshId', meshFileId);
+        uploadedMeshIdRef.current = meshFileId; // Store in ref for immediate reuse
+        currentMeshFileRef.current = formData.meshFile;
+        handleInputChange('uploadedMeshId', meshFileId); // Also update state for UI
       }
 
       // Create rigging request
@@ -323,7 +342,7 @@ const AutoRiggingPanel: React.FC = () => {
         id: `task-${Date.now()}`,
         jobId: response.job_id,
         type: 'auto-rigging' as TaskType,
-        name: `Auto Rigging: ${formData.meshFile!.name} (${formData.rigMode} mode)`,
+        name: `${formData.meshFile!.name.substring(0, 15)} (${formData.rigMode})`,
         status: response.status as JobStatus,
         createdAt: new Date(),
         progress: 0,

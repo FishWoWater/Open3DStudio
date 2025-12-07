@@ -281,6 +281,10 @@ const MeshGenerationPanel: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use ref to store uploaded file ID persistently across renders
+  const uploadedImageIdRef = React.useRef<string | null>(null);
+  const currentImageFileRef = React.useRef<File | null>(null);
 
   // Get feature availability status
   const textToMeshAvailable = checkFeature(formData.enableTexture ? 'text-to-textured-mesh' : 'text-to-raw-mesh');
@@ -336,6 +340,8 @@ const MeshGenerationPanel: React.FC = () => {
     if (imageFile) {
       handleInputChange('imageFile', imageFile);
       handleInputChange('uploadedImageId', null); // Reset uploaded ID
+      uploadedImageIdRef.current = null; // Reset ref
+      currentImageFileRef.current = imageFile;
     } else {
       setError('Please select a valid image file (PNG, JPG, JPEG, WEBP)');
     }
@@ -346,12 +352,16 @@ const MeshGenerationPanel: React.FC = () => {
     if (file) {
       handleInputChange('imageFile', file);
       handleInputChange('uploadedImageId', null); // Reset uploaded ID
+      uploadedImageIdRef.current = null; // Reset ref
+      currentImageFileRef.current = file;
     }
   }, [handleInputChange]);
 
   const handleRemoveImage = useCallback(() => {
     handleInputChange('imageFile', null);
     handleInputChange('uploadedImageId', null);
+    uploadedImageIdRef.current = null; // Reset ref
+    currentImageFileRef.current = null;
   }, [handleInputChange]);
 
   const validateForm = useCallback((): string | null => {
@@ -404,8 +414,8 @@ const MeshGenerationPanel: React.FC = () => {
       let taskType: TaskType;
 
       if (mode === 'text') {
-        // taskName = `Text to Mesh: "${formData.textPrompt.substring(0, 30)}${formData.textPrompt.length > 30 ? '...' : ''}"`;
-        taskName = `Text to Mesh`;
+        taskName = `"${formData.textPrompt.substring(0, 20)}${formData.textPrompt.length > 20 ? '...' : ''}"`;
+        // taskName = `Text to Mesh`;
 
         if (formData.enableTexture) {
           // Text to textured mesh
@@ -418,7 +428,7 @@ const MeshGenerationPanel: React.FC = () => {
           };
           console.log('[DEBUG] Text to textured mesh request:', request);
           response = await apiClient.textToTexturedMesh(request);
-          taskType = 'text-to-textured-mesh' as TaskType;
+          taskType = 'text-to-mesh' as TaskType;
         } else {
           // Text to raw mesh
           const request: TextToMeshRequest = {
@@ -432,21 +442,30 @@ const MeshGenerationPanel: React.FC = () => {
         }
       } else {
         // Image to mesh - NEW WORKFLOW: Upload file first, then use file_id
-        taskName = `Image to Mesh: ${formData.imageFile!.name}`;
+        taskName = `${formData.imageFile!.name.substring(0, 15)}`;
         
-        let imageFileId = formData.uploadedImageId;
+        // Check if we have a cached file ID for the current image file
+        let imageFileId = uploadedImageIdRef.current;
+        // Compare files by properties instead of reference to handle file object recreation
+        const isSameFile = currentImageFileRef.current && formData.imageFile &&
+          currentImageFileRef.current.name === formData.imageFile.name &&
+          currentImageFileRef.current.size === formData.imageFile.size &&
+          currentImageFileRef.current.lastModified === formData.imageFile.lastModified;
         
-        // Upload image if not already uploaded
-        if (!imageFileId) {
+        // Upload image if not already uploaded or if file changed
+        if (!imageFileId || !isSameFile) {
           const uploadResponse = await apiClient.uploadImageFile(
             formData.imageFile!,
             (progress) => setUploadProgress(progress * 0.5) // Use 50% of progress for upload
           );
           imageFileId = uploadResponse.file_id;
-          handleInputChange('uploadedImageId', imageFileId);
+          uploadedImageIdRef.current = imageFileId; // Store in ref for immediate reuse
+          currentImageFileRef.current = formData.imageFile;
+          handleInputChange('uploadedImageId', imageFileId); // Also update state for UI
         }
 
         if (formData.enableTexture) {
+          console.log("[Debug] using ImageFileID in image2textured-mesh", imageFileId);
           // Image to textured mesh
           const request: ImageToTexturedMeshRequest = {
             image_file_id: imageFileId,
@@ -456,15 +475,16 @@ const MeshGenerationPanel: React.FC = () => {
           };
           console.log('[DEBUG] Image to textured mesh request:', request);
           response = await apiClient.imageToTexturedMesh(request);
-          taskType = 'image-to-textured-mesh' as TaskType;
+          taskType = 'image-to-mesh' as TaskType;
         } else {
+          console.log("[Debug] using ImageFileID in image2raw-mesh", imageFileId);
           // Image to raw mesh
           const request: ImageToMeshRequest = {
             image_file_id: imageFileId,
             output_format: formData.outputFormat,
             model_preference: formData.modelPreference || availableModels[0]
           };
-          console.log('[DEBUG] Image to raw mesh request:', request);
+          // console.log('[DEBUG] Image to raw mesh request:', request);
           response = await apiClient.imageToRawMesh(request);
           taskType = 'image-to-mesh' as TaskType;
         }

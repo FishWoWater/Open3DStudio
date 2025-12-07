@@ -83,20 +83,22 @@ export interface Task {
   result?: TaskResult;
   error?: string;
   thumbnail?: string;
+  inputImageUrl?: string; // URL to input image from API response (persists across sessions)
+  modelPreference?: string; // Model used for this task
 }
 
 export type TaskType = 
   | 'text-to-mesh'
   | 'image-to-mesh'
-  | 'text-to-textured-mesh'
-  | 'image-to-textured-mesh'
+  // | 'text-to-textured-mesh'
+  // | 'image-to-textured-mesh'
   | 'text-mesh-painting'
   | 'image-mesh-painting'
-  | 'mesh-segmentation'
+  | 'mesh-seg'
   | 'part-completion'
   | 'auto-rigging'
-  | 'mesh-retopology'
-  | 'mesh-uv-unwrapping';
+  | 'mesh-retopo'
+  | 'mesh-uv-unwrap';
 
 export interface TaskInputData {
   textPrompt?: string;

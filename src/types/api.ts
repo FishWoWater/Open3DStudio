@@ -20,6 +20,7 @@ export interface JobInfo {
   created_at: string;
   completed_at?: string;
   processing_time?: number;
+  model_preference?: string;
   result?: {
     output_mesh_path?: string;
     thumbnail_path?: string;
@@ -30,6 +31,14 @@ export interface JobInfo {
       parameters: Record<string, any>;
       thumbnail_generated?: boolean;
     };
+  };
+  input_image_url?: string;
+  input_image_file_info?: {
+    filename: string;
+    file_size_bytes: number;
+    file_size_mb: number;
+    content_type: string;
+    file_extension: string;
   };
 }
 
@@ -69,6 +78,14 @@ export interface HistoricalJob {
   thumbnail_path?: string;
   mesh_url?: string;
   thumbnail_url?: string;
+  input_image_url?: string;
+  input_image_file_info?: {
+    filename: string;
+    file_size_bytes: number;
+    file_size_mb: number;
+    content_type: string;
+    file_extension: string;
+  };
 }
 
 export interface JobsHistoryPagination {

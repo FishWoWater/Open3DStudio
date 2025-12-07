@@ -61,13 +61,27 @@ const PreviewHeader = styled.div`
 
 const FileInfo = styled.div`
   flex: 1;
+  min-width: 0; /* Allow truncation to work in flex container */
+  overflow: hidden;
 `;
 
 const FileName = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
   color: ${props => props.theme.colors.text.primary};
   font-size: ${props => props.theme.typography.fontSize.sm};
   font-weight: ${props => props.theme.typography.fontWeight.medium};
   margin-bottom: 2px;
+  min-width: 0; /* Allow flex items to shrink below content size */
+`;
+
+const FileNameText = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 `;
 
 const FileDetails = styled.div`
@@ -84,6 +98,8 @@ const RemoveButton = styled.button`
   font-size: ${props => props.theme.typography.fontSize.xs};
   cursor: pointer;
   transition: all ${props => props.theme.transitions.fast};
+  flex-shrink: 0; /* Prevent button from shrinking */
+  white-space: nowrap;
 
   &:hover {
     opacity: 0.8;
@@ -120,7 +136,8 @@ const SourceBadge = styled.div<{ source: 'upload' | 'task' }>`
   color: white;
   border-radius: ${props => props.theme.borderRadius.sm};
   font-size: ${props => props.theme.typography.fontSize.xs};
-  margin-left: ${props => props.theme.spacing.xs};
+  flex-shrink: 0; /* Prevent badge from shrinking */
+  white-space: nowrap;
 `;
 
 interface MeshPreviewProps {
@@ -130,9 +147,12 @@ interface MeshPreviewProps {
 const MeshPreview: React.FC<MeshPreviewProps> = ({ meshObject }) => {
   return (
     <>
-      <Environment preset="studio" />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <Environment preset="studio" background={false} />
+      <ambientLight intensity={0.7} />
+      <hemisphereLight args={['#ffffff', '#444444', 0.6]} />
+      <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
+      <directionalLight position={[-5, 3, -5]} intensity={0.4} />
+      <spotLight position={[0, 10, 0]} intensity={0.5} angle={0.6} penumbra={0.5} />
       <Center>
         <primitive object={meshObject} />
       </Center>
@@ -352,7 +372,9 @@ const MeshFileUploadWithPreview: React.FC<MeshFileUploadWithPreviewProps> = ({
           <PreviewHeader>
             <FileInfo>
               <FileName>
-                {value ? value.name : sourceTaskName || 'Task Result'}
+                <FileNameText title={value ? value.name : sourceTaskName || 'Task Result'}>
+                  {value ? value.name : sourceTaskName || 'Task Result'}
+                </FileNameText>
                 <SourceBadge source={meshSource.current}>
                   {meshSource.current === 'task' ? 'From Task' : 'Uploaded'}
                 </SourceBadge>

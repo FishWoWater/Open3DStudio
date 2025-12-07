@@ -1,0 +1,2 @@
+@src/components/tasks/TaskItem.tsx @src/components/tasks/TaskList.tsx When there are a large number of tasks in the history, downloading and previewing the mesh results of them can be very slow. Could you please do some optimization? For example, only download and preview the task in the currently active scroll view of the task list, and only when the users scroll down the historical list, download tasks in that view. 
+Please consider carefully, and don't create any markdown files.

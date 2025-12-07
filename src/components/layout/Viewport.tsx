@@ -576,7 +576,7 @@ const Viewport: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <TestDropdown>
             <TestMainButton onClick={() => setTestDropdownOpen(!testDropdownOpen)}>
-              Test Models
+              Example Assets
               <i className={`fas fa-chevron-${testDropdownOpen ? 'up' : 'down'}`}></i>
             </TestMainButton>
             <TestDropdownMenu isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>

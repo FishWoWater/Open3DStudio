@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import ImagePreview from '../ui/ImagePreview';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
 import Select, { SelectOption } from '../ui/Select';
+import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshPaintingRequest } from '../../types/api';
 import { cleanModelName } from '../../utils/modelNames';
@@ -215,6 +216,7 @@ interface FormData {
 
 const MeshPaintingPanel: React.FC = () => {
   const { addTask, addNotification, ui, clearTaskResultAsInput, tasks, settings } = useStore();
+  const { features, loading: featuresLoading, checkFeature, getModelsForFeature, refetch } = useFeatureAvailability();
   const [formData, setFormData] = useState<FormData>({
     meshFile: null,
     uploadedMeshId: null,
@@ -231,6 +233,46 @@ const MeshPaintingPanel: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Use refs to store uploaded file IDs persistently across renders
+  const uploadedImageIdRef = React.useRef<string | null>(null);
+  const currentImageFileRef = React.useRef<File | null>(null);
+  const uploadedMeshIdRef = React.useRef<string | null>(null);
+  const currentMeshFileRef = React.useRef<File | null>(null);
+
+  // Get feature availability status
+  const textMeshPaintingAvailable = checkFeature('text-mesh-painting');
+  const imageMeshPaintingAvailable = checkFeature('image-mesh-painting');
+  const currentFeatureAvailable = formData.paintingMode === 'text' ? textMeshPaintingAvailable : imageMeshPaintingAvailable;
+
+  // Get available models for current feature
+  const availableModels = useMemo(() => {
+    const featureName = formData.paintingMode === 'text' ? 'text-mesh-painting' : 'image-mesh-painting';
+    return getModelsForFeature(featureName);
+  }, [formData.paintingMode, getModelsForFeature]);
+
+  // Dynamic model preference options
+  const modelPreferenceOptions: SelectOption[] = useMemo(() => {
+    if (availableModels.length === 0) {
+      return [{ value: '', label: 'No models available' }];
+    }
+    return availableModels.map(model => ({
+      value: model,
+      label: cleanModelName(model).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }));
+  }, [availableModels]);
+
+  // Update model preference when available models change
+  React.useEffect(() => {
+    if (availableModels.length > 0 && !formData.modelPreference) {
+      handleInputChange('modelPreference', availableModels[0]);
+    }
+  }, [availableModels, formData.modelPreference]);
+
+  // Refetch models when painting mode changes
+  React.useEffect(() => {
+    refetch();
+  }, [formData.paintingMode, refetch]);
 
   // Handle task result as input
   useEffect(() => {
@@ -275,6 +317,10 @@ const MeshPaintingPanel: React.FC = () => {
               uploadedMeshId: null
             }));
             
+            // Reset mesh refs when loading from task result
+            uploadedMeshIdRef.current = null;
+            currentMeshFileRef.current = file;
+            
             setIsDownloading(false);
             addNotification({
               type: 'success',
@@ -310,6 +356,8 @@ const MeshPaintingPanel: React.FC = () => {
 
   const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
     setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    uploadedMeshIdRef.current = null; // Reset ref when file changes
+    currentMeshFileRef.current = file;
     setError(null);
   }, []);
 
@@ -323,6 +371,8 @@ const MeshPaintingPanel: React.FC = () => {
     if (imageFile) {
       handleInputChange('referenceImage', imageFile);
       handleInputChange('uploadedImageId', null); // Reset uploaded ID
+      uploadedImageIdRef.current = null; // Reset ref
+      currentImageFileRef.current = imageFile;
     } else {
       setError('Please select a valid image file (PNG, JPG, JPEG, WEBP)');
     }
@@ -341,12 +391,16 @@ const MeshPaintingPanel: React.FC = () => {
     if (file) {
       handleInputChange('referenceImage', file);
       handleInputChange('uploadedImageId', null); // Reset uploaded ID
+      uploadedImageIdRef.current = null; // Reset ref
+      currentImageFileRef.current = file;
     }
   }, [handleInputChange]);
 
   const handleRemoveImage = useCallback(() => {
     handleInputChange('referenceImage', null);
     handleInputChange('uploadedImageId', null);
+    uploadedImageIdRef.current = null; // Reset ref
+    currentImageFileRef.current = null;
   }, [handleInputChange]);
 
   const validateForm = useCallback((): string | null => {
@@ -400,20 +454,30 @@ const MeshPaintingPanel: React.FC = () => {
       let taskName: string;
       let taskType: TaskType;
 
-      // Upload mesh file if not already uploaded
-      let meshFileId = formData.uploadedMeshId;
-      if (!meshFileId) {
+      // Check if we have a cached file ID for the current mesh file
+      let meshFileId = uploadedMeshIdRef.current;
+      // Compare files by properties instead of reference to handle file object recreation
+      const isSameMesh = currentMeshFileRef.current && formData.meshFile &&
+        currentMeshFileRef.current.name === formData.meshFile.name &&
+        currentMeshFileRef.current.size === formData.meshFile.size &&
+        currentMeshFileRef.current.lastModified === formData.meshFile.lastModified;
+      
+      // Upload mesh file if not already uploaded or if file changed
+      if (!meshFileId || !isSameMesh) {
         const meshUploadResponse = await apiClient.uploadMeshFile(
           formData.meshFile!,
           (progress) => setUploadProgress(progress * 0.4) // 40% for mesh upload
         );
         meshFileId = meshUploadResponse.file_id;
-        handleInputChange('uploadedMeshId', meshFileId);
+        uploadedMeshIdRef.current = meshFileId; // Store in ref for immediate reuse
+        currentMeshFileRef.current = formData.meshFile;
+        handleInputChange('uploadedMeshId', meshFileId); // Also update state for UI
       }
 
       if (formData.paintingMode === 'text') {
         // Text mesh painting
-        taskName = `Text Painting: "${formData.textPrompt.substring(0, 30)}${formData.textPrompt.length > 30 ? '...' : ''}"`;
+        taskName = `"${formData.textPrompt.substring(0, 20)}${formData.textPrompt.length > 20 ? '...' : ''}"`;
+        
         
         const request: MeshPaintingRequest = {
           text_prompt: formData.textPrompt,
@@ -429,17 +493,26 @@ const MeshPaintingPanel: React.FC = () => {
         taskType = 'text-mesh-painting' as TaskType;
       } else {
         // Image mesh painting
-        taskName = `Image Painting: ${formData.referenceImage!.name}`;
+        taskName = `${formData.referenceImage!.name.substring(0, 15)}`;
         
-        // Upload image file if not already uploaded
-        let imageFileId = formData.uploadedImageId;
-        if (!imageFileId) {
+        // Check if we have a cached file ID for the current reference image
+        let imageFileId = uploadedImageIdRef.current;
+        // Compare files by properties instead of reference to handle file object recreation
+        const isSameImage = currentImageFileRef.current && formData.referenceImage &&
+          currentImageFileRef.current.name === formData.referenceImage.name &&
+          currentImageFileRef.current.size === formData.referenceImage.size &&
+          currentImageFileRef.current.lastModified === formData.referenceImage.lastModified;
+        
+        // Upload image file if not already uploaded or if file changed
+        if (!imageFileId || !isSameImage) {
           const imageUploadResponse = await apiClient.uploadImageFile(
             formData.referenceImage!,
             (progress) => setUploadProgress(40 + progress * 0.4) // 40-80% for image upload
           );
           imageFileId = imageUploadResponse.file_id;
-          handleInputChange('uploadedImageId', imageFileId);
+          uploadedImageIdRef.current = imageFileId; // Store in ref for immediate reuse
+          currentImageFileRef.current = formData.referenceImage;
+          handleInputChange('uploadedImageId', imageFileId); // Also update state for UI
         }
 
         const request: MeshPaintingRequest = {
@@ -469,6 +542,7 @@ const MeshPaintingPanel: React.FC = () => {
         status: response.status as JobStatus,
         createdAt: new Date(),
         progress: 0,
+        modelPreference: formData.modelPreference || availableModels[0],
         inputData: {
           textPrompt: formData.textPrompt,
           files: [
@@ -519,7 +593,7 @@ const MeshPaintingPanel: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, availableModels]);
 
   return (
     <PanelContainer>
@@ -637,12 +711,28 @@ const MeshPaintingPanel: React.FC = () => {
         </ParameterGrid>
       </FormSection>
 
+      {!featuresLoading && currentFeatureAvailable && availableModels.length > 0 && (
+        <FormSection>
+          <Label>Model Preference</Label>
+          <Select
+            options={modelPreferenceOptions}
+            value={formData.modelPreference}
+            onChange={(value) => handleInputChange('modelPreference', value)}
+            placeholder="Select model"
+          />
+        </FormSection>
+      )}
+
       <FormSection>
         <PaintButton
-          disabled={isPainting || isDownloading}
+          disabled={isPainting || isDownloading || !currentFeatureAvailable || availableModels.length === 0}
           onClick={handlePaint}
         >
-          {isPainting ? 'Processing...' : isDownloading ? 'Downloading...' : 'Paint Mesh Texture'}
+          {isPainting ? 'Processing...' : 
+           isDownloading ? 'Downloading...' : 
+           !currentFeatureAvailable ? 'Feature Unavailable' :
+           availableModels.length === 0 ? 'No Models Available' :
+           'Paint Mesh Texture'}
         </PaintButton>
         
         {isPainting && (

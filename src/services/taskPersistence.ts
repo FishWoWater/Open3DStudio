@@ -156,12 +156,12 @@ export class TaskPersistenceService {
     // Map backend feature types to frontend task types
     const featureToTaskType: Record<string, TaskType> = {
       'text_to_raw_mesh': 'text-to-mesh',
-      'text_to_textured_mesh': 'text-to-textured-mesh',
+      'text_to_textured_mesh': 'text-to-mesh',
       'image_to_raw_mesh': 'image-to-mesh',
-      'image_to_textured_mesh': 'image-to-textured-mesh',
+      'image_to_textured_mesh': 'image-to-mesh',
       'text_mesh_painting': 'text-mesh-painting',
       'image_mesh_painting': 'image-mesh-painting',
-      'mesh_segmentation': 'mesh-segmentation',
+      'mesh_segmentation': 'mesh-seg',
       'part_completion': 'part-completion',
       'auto_rig': 'auto-rigging'
     };
@@ -179,6 +179,8 @@ export class TaskPersistenceService {
       createdAt: new Date(job.created_at),
       completedAt: job.completed_at ? new Date(job.completed_at) : undefined,
       processingTime: job.processing_time,
+      inputImageUrl: job.input_image_url, // Capture persistent input image URL
+      modelPreference: job.model_preference, // Capture model preference
       inputData: {
         // We don't have detailed input data from history, so we'll leave it minimal
         parameters: {

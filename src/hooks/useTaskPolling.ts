@@ -30,9 +30,15 @@ export const useTaskPolling = (options: UseTaskPollingOptions = {}) => {
       const jobInfo: JobInfo = await apiClient.getJobStatus(task.jobId);
       // console.log("The task result is: ", task.result);
       
-      // Check if status changed
-      if (jobInfo.status !== task.status) {
-        console.log(`[TaskPolling] Task ${task.id} status changed: ${task.status} -> ${jobInfo.status}`);
+      // Check if status changed or if we need to capture the input image URL or model preference
+      const needsUpdate = jobInfo.status !== task.status || 
+                         (jobInfo.input_image_url && !task.inputImageUrl) ||
+                         (jobInfo.model_preference && !task.modelPreference);
+      
+      if (needsUpdate) {
+        if (jobInfo.status !== task.status) {
+          console.log(`[TaskPolling] Task ${task.id} status changed: ${task.status} -> ${jobInfo.status}`);
+        }
         
         const updatedTask: Partial<Task> = {
           status: jobInfo.status,
@@ -41,6 +47,18 @@ export const useTaskPolling = (options: UseTaskPollingOptions = {}) => {
                    jobInfo.status === 'processing' ? 50 : 
                    task.progress
         };
+        
+        // Capture input image URL from API response (persists across sessions)
+        if (jobInfo.input_image_url && !task.inputImageUrl) {
+          updatedTask.inputImageUrl = jobInfo.input_image_url;
+          console.log(`[TaskPolling] Captured input image URL for task ${task.id}: ${jobInfo.input_image_url}`);
+        }
+        
+        // Capture model preference from API response
+        if (jobInfo.model_preference && !task.modelPreference) {
+          updatedTask.modelPreference = jobInfo.model_preference;
+          console.log(`[TaskPolling] Captured model preference for task ${task.id}: ${jobInfo.model_preference}`);
+        }
 
         // Handle completion
         if (jobInfo.status === 'completed') {

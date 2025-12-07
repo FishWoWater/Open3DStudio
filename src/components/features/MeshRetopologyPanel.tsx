@@ -245,6 +245,10 @@ const MeshRetopologyPanel: React.FC = () => {
   const [availableModels, setAvailableModels] = useState<RetopologyAvailableModels | null>(null);
   const [loadingModels, setLoadingModels] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Use refs to store uploaded file IDs persistently across renders
+  const uploadedMeshIdRef = React.useRef<string | null>(null);
+  const currentMeshFileRef = React.useRef<File | null>(null);
 
   // Handle task result as input
   useEffect(() => {
@@ -288,6 +292,10 @@ const MeshRetopologyPanel: React.FC = () => {
               meshFile: file,
               uploadedMeshId: null
             }));
+            
+            // Reset mesh refs when loading from task result
+            uploadedMeshIdRef.current = null;
+            currentMeshFileRef.current = file;
             
             setIsDownloading(false);
             addNotification({
@@ -359,6 +367,8 @@ const MeshRetopologyPanel: React.FC = () => {
 
   const handleMeshChange = useCallback((file: File | null, meshId: string | null) => {
     setFormData(prev => ({ ...prev, meshFile: file, uploadedMeshId: meshId }));
+    uploadedMeshIdRef.current = null; // Reset ref when file changes
+    currentMeshFileRef.current = file;
     setError(null);
   }, []);
 
@@ -408,15 +418,24 @@ const MeshRetopologyPanel: React.FC = () => {
     try {
       const apiClient = getApiClient();
       
-      // Upload mesh if not already uploaded
-      let meshFileId = formData.uploadedMeshId;
-      if (!meshFileId) {
+      // Check if we have a cached file ID for the current mesh file
+      let meshFileId = uploadedMeshIdRef.current;
+      // Compare files by properties instead of reference to handle file object recreation
+      const isSameMesh = currentMeshFileRef.current && formData.meshFile &&
+        currentMeshFileRef.current.name === formData.meshFile.name &&
+        currentMeshFileRef.current.size === formData.meshFile.size &&
+        currentMeshFileRef.current.lastModified === formData.meshFile.lastModified;
+      
+      // Upload mesh if not already uploaded or if file changed
+      if (!meshFileId || !isSameMesh) {
         const uploadResponse = await apiClient.uploadMeshFile(
           formData.meshFile!,
           (progress) => setUploadProgress(progress * 0.5)
         );
         meshFileId = uploadResponse.file_id;
-        handleInputChange('uploadedMeshId', meshFileId);
+        uploadedMeshIdRef.current = meshFileId; // Store in ref for immediate reuse
+        currentMeshFileRef.current = formData.meshFile;
+        handleInputChange('uploadedMeshId', meshFileId); // Also update state for UI
       }
 
       // Submit retopology job
@@ -442,8 +461,8 @@ const MeshRetopologyPanel: React.FC = () => {
       const task = {
         id: `task-${Date.now()}`,
         jobId: response.job_id,
-        type: 'mesh-retopology' as TaskType,
-        name: `Mesh Retopology: ${formData.meshFile!.name}`,
+        type: 'mesh-retopo' as TaskType,
+        name: `${formData.meshFile!.name.substring(0, 20)}`,
         status: response.status as JobStatus,
         createdAt: new Date(),
         progress: 0,
