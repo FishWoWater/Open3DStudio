@@ -8,6 +8,10 @@
 The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion, mesh re-topologize and mesh uv unwrapping etc.
 
 ## CHANGELOG 
+### Updates 12.07 (Releasing V1.0.0)
+* Improving the UI display of the historical tasks 
+* Some minor fixes
+
 ### Updates 11.30
 * Support the task of **Mesh Retopology** and Mesh UV Unwrapping 
 * Support running in the **user management** mode, which require the user to register and login 
