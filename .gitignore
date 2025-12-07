@@ -28,6 +28,6 @@ legacy
 # packaged application
 dist
 build-assets 
-scripts
+# scripts
 
 dev_history/
