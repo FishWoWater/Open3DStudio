@@ -1,7 +1,8 @@
 # Open3DStudio
 
-[![Apache2.0 License](https://img.shields.io/badge/license-Apache2.0-green.svg)](LICENSE)
+[![Apache2.0 License](https://img.shields.io/badge/License-Apache2.0-green.svg)](LICENSE)
 [![Cross-Platform](https://img.shields.io/badge/platform-MacOS%20%7C%20Windows%20%7C%20Web-blue)](#)
+[![Open3DStudio](https://img.shields.io/badge/YouTube-Open3DStudio-red?style=for-the-badge&logo=youtube)](https://youtu.be/LNteOF3XmmI)
 
 **Open3DStudio** is a cross-platform self-hosted 3D AIGC application. It works closely with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) to provide **completely locally deployed** and **free** 3DAIGC workflows. Basically it's an advanced version of the  **[Minimal3DStudio](https://github.com/FishWoWater/Minimal3DStudio)** and much like a **replicate of [TripoStudio](https://studio.tripo3d.ai/home?lng=en)**.
 
@@ -24,9 +25,9 @@ You can have a try on [Vercel Deployment](https://open3dstudio-n5hap1p9y-fishwow
 
  Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180) (it's deployed on a single 3060Ti and ONLY enables the mesh segmentation feature).
 
- The below video demo shows a section-by-section example of Open3DStudio, you may also check out the comprehensive guide [here](https://www.youtube.com/watch?v=y8ydZeZnPjM).
-
-![Demo](assets/demo.gif)
+<p align="center">
+<a href="https://www.youtube.com/watch?v=LNteOF3XmmI">Video Demo</a>&nbsp&nbsp
+</p>
 
 
 ## Supported 3DAIGC Modules

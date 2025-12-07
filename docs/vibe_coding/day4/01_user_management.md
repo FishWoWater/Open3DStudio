@@ -3,4 +3,5 @@ Specifically, noe we are two variants of the backend services, enable/disable us
 If it's enabled, I hope you can add two minimal components/pages for the user to register and login, and later all job polling/submission should be done with the generated token. Examples of register/login/get token  are provided at @dev_history/ui_management/auth_api.md 
 You are an expert, make good plans before you begin, and only modify necessary code. Don't create ANY markdown files.
 
+### Follow Up 
 When the user login, perhaps you should clear the local cache which may belong to another user? (or verify whether it belongs to the login user). You should also address the anonymous backend mode.
