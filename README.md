@@ -21,14 +21,10 @@ The supported workflows include text-to-3d, image-to-3d, mesh segmentation, text
 * Support viewing UV layout of the selected mesh, two-sided rendering etc.
 
 ## Demo 
-You can have a try on [Vercel Deployment](https://open3dstudio-n5hap1p9y-fishwowaters-projects.vercel.app) or download the shipped applications from [Releases](https://github.com/FishWoWater/Open3DStudio/releases).
+You can have a try on [Vercel Deployment](https://open3dstudio-n5hap1p9y-fishwowaters-projects.vercel.app) or download the shipped applications from [Releases](https://github.com/FishWoWater/Open3DStudio/releases). Notice that you need to deploy the API backend on your own machine or server. 
 
- Notice that you need to deploy the API backend on your own machine or server, or try my API endpoint: [http://i-2.gpushare.com:42180](http://i-2.gpushare.com:42180) (it's deployed on a single 3060Ti and ONLY enables the mesh segmentation feature).
-
-<p align="center">
-<a href="https://www.youtube.com/watch?v=LNteOF3XmmI">Video Demo</a>&nbsp&nbsp
-</p>
-
+![demo](./assets/open3dstudio_v1.0_demo_65m.gif)
+For higher-quality video demo, please check [youtube](https://youtu.be/LNteOF3XmmI).
 
 ## Supported 3DAIGC Modules
 * Mesh Generation: text / image
