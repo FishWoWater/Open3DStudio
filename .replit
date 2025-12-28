@@ -1,0 +1,20 @@
+# Open3DStudio Replit Configuration
+# This file configures how Open3DStudio runs on Replit
+
+run = "npm run start"
+entrypoint = "src/index.tsx"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "npm run start"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[env]
+BROWSER = "none"
+DANGEROUSLY_DISABLE_HOST_CHECK = "true"
