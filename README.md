@@ -62,6 +62,23 @@ npm run dist-mac
 npm run dist-win
 ```
 
+## Deploy on Replit
+
+You can deploy Open3DStudio on Replit with just a few clicks:
+
+1. **Fork or Import**: Click the button below or import this repository directly into Replit
+
+   [![Run on Replit](https://replit.com/badge/github/FishWoWater/Open3DStudio)](https://replit.com/new/github/FishWoWater/Open3DStudio)
+
+2. **Install Dependencies**: Replit will automatically run `npm install` when you first open the project
+
+3. **Configure Environment**: Set up your API backend URL in the Replit Secrets tab:
+   - Add `REACT_APP_API_BASE_URL` with your 3DAIGC-API backend URL
+
+4. **Run**: Click the "Run" button to start the development server
+
+> **Note**: Replit deployment runs the web version only (no Electron desktop features). Make sure you have the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) backend deployed and accessible from your Replit instance.
+
 ## Vibe Coding 
 Check out [Vibe Coding Prompts](./docs/vibe_coding/) for the whole developing progress.
 
