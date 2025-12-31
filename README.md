@@ -4,15 +4,25 @@
 [![Cross-Platform](https://img.shields.io/badge/platform-MacOS%20%7C%20Windows%20%7C%20Web-blue)](#)
 [![Open3DStudio](https://img.shields.io/badge/YouTube-Open3DStudio-red?logo=youtube)](https://youtu.be/LNteOF3XmmI)
 
-**Open3DStudio** is a cross-platform self-hosted 3D AIGC application. It works closely with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) to provide **completely locally deployed** and **free** 3DAIGC workflows. Basically it's an advanced version of the  **[Minimal3DStudio](https://github.com/FishWoWater/Minimal3DStudio)** and much like a **replicate of [TripoStudio](https://studio.tripo3d.ai/home?lng=en)**.
+**Open3DStudio** is a cross-platform AI-powered game development studio and 3D AIGC application. It combines **AI game ideation** (like LudoAI), **automatic game generation**, and **3D asset creation** into one seamless workflow. Create complete playable games with AI-generated 3D assets - no coding required!
 
-The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion, mesh re-topologize and mesh uv unwrapping etc.
+Works with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) for completely locally deployed and free 3DAIGC workflows.
+
+## 🎮 Game Studio Features
+
+- **AI Chat Interface** - Discuss your game ideas with AI, brainstorm mechanics, and refine concepts
+- **Automatic Game Generation** - AI generates playable HTML5 games from your descriptions
+- **Multiple Game Templates** - Platformer, Shooter, Puzzle, Arcade, Racing, Adventure, and more
+- **One-Click Export** - Download games as single HTML files that run anywhere
+- **3D Asset Integration** - Automatically generate 3D models for your games
 
 ## CHANGELOG 
-### Updates 12.31 (Game Development Enhancements)
-* Added **Export Panel** for exporting models and scenes to game-ready formats (GLB/GLTF)
-* Export individual models or entire scenes for Unity, Unreal Engine, and Blender
-* Improved game development workflow documentation
+### Updates 12.31 (Game Studio Launch 🎮)
+* **NEW: Game Studio** - Complete game development platform with AI chat interface
+* Build playable games (platformer, shooter, puzzle, arcade) from natural language
+* Export games as HTML5 files for web deployment
+* Added **Export Panel** for exporting 3D models/scenes to game engines (GLB/GLTF)
+* Improved Replit deployment experience
 
 ### Updates 12.07 (Releasing V1.0.0)
 * Improving the UI display of the historical tasks 
@@ -44,6 +54,15 @@ For higher-quality video demo, please check [Youtube](https://youtu.be/LNteOF3Xm
 The available models are up to the API backend, refer to [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) for the example model matrix
 
 ## Applications Features
+
+### Game Studio (NEW!)
+- **AI Game Designer** - Chat with AI to design your game concepts
+- **One-Click Game Generation** - AI generates complete playable games
+- **Multiple Genres** - Platformer, Shooter, Puzzle, Arcade, Racing, Adventure
+- **Instant Preview** - Play your game directly in the browser
+- **Export Anywhere** - Download as HTML5 for web, mobile, or desktop
+
+### 3D Asset Creation
 - Multiple rendering modes (Solid/Rendered/WireFrame/Skeleton/PartColorize/TwoSided-Rendering)
 - Task management with progress and history
 - Multi-format support: GLB, OBJ, FBX etc.
@@ -68,9 +87,25 @@ npm run dist-mac
 npm run dist-win
 ```
 
-## 🎮 3D Game Asset Workflow
+## 🎮 Game Studio Quick Start
 
-Open3DStudio streamlines the creation of 3D game assets. Here's a typical workflow:
+1. **Open Game Studio** - Click "Game Studio" in the top navigation
+2. **Choose a Genre** - Select from platformer, puzzle, shooter, arcade, etc.
+3. **Chat with AI** - Describe your game idea in natural language
+4. **Build Game** - Click "Build Game" to generate a playable prototype
+5. **Preview & Export** - Play in-browser or download as HTML file
+
+### Game Types You Can Create
+- **Platformer** - Side-scrolling jump and collect games
+- **Shooter** - Space shooters with waves of enemies
+- **Puzzle** - Sliding puzzles and brain teasers
+- **Arcade** - Classic snake, pac-man style games
+- **Racing** - Simple racing games
+- **Adventure** - Exploration games
+
+## 🎨 3D Asset Workflow
+
+Open3DStudio also streamlines the creation of 3D game assets:
 
 ### 1. Generate 3D Models
 - Use **MeshGen** to create models from text prompts or reference images

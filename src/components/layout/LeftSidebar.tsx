@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useCurrentModule, useCurrentFeature } from '../../store';
+import GameStudioPanel from '../features/GameStudioPanel';
 import MeshGenerationPanel from '../features/MeshGenerationPanel';
 import MeshPaintingPanel from '../features/MeshPaintingPanel';
 import MeshSegmentationPanel from '../features/MeshSegmentationPanel';
@@ -64,6 +65,7 @@ interface LeftSidebarProps {
 }
 
 const moduleNames: Record<string, string> = {
+  'game-studio': 'Game Studio',
   'mesh-generation': 'Mesh Generation',
   'mesh-painting': 'Mesh Painting',
   'mesh-segmentation': 'Mesh Segmentation',
@@ -79,6 +81,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isCollapsed, width }) => {
 
   const renderFeaturePanel = () => {
     switch (currentModule) {
+      case 'game-studio':
+        return <GameStudioPanel />;
       case 'mesh-generation':
         return <MeshGenerationPanel />;
       case 'mesh-painting':

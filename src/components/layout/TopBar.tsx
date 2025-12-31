@@ -143,6 +143,7 @@ interface TopBarProps {
 }
 
 const modules: { id: ModuleType; name: string; icon: string }[] = [
+  { id: 'game-studio', name: 'Game Studio', icon: 'fas fa-gamepad' },
   { id: 'mesh-generation', name: 'MeshGen', icon: 'fas fa-shapes' },
   { id: 'mesh-retopology', name: 'LowPoly Retopo', icon: 'fas fa-project-diagram' },
   { id: 'mesh-uv-unwrapping', name: 'UV Unwrap', icon: 'fas fa-map' },

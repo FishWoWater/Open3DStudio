@@ -11,6 +11,7 @@ export interface AppState {
   ui: UIState;
   system: SystemState;
   auth: AuthState;
+  gameStudio: GameStudioState;
 }
 
 // Authentication State Types
@@ -24,6 +25,7 @@ export interface AuthState {
 
 // Module Types
 export type ModuleType = 
+  | 'game-studio'
   | 'mesh-generation' 
   | 'mesh-painting' 
   | 'mesh-segmentation' 
@@ -44,6 +46,104 @@ export interface FeatureConfig {
   name: string;
   component: string;
   description: string;
+}
+
+// Game Studio Types
+export interface GameProject {
+  id: string;
+  name: string;
+  description: string;
+  genre: GameGenre;
+  status: 'ideation' | 'designing' | 'building' | 'testing' | 'deployed';
+  createdAt: Date;
+  updatedAt: Date;
+  conversation: ChatMessage[];
+  gameConfig: GameConfig;
+  assets: GameAsset[];
+  generatedCode?: string;
+  previewUrl?: string;
+  deploymentUrl?: string;
+}
+
+export type GameGenre = 
+  | 'platformer'
+  | 'puzzle'
+  | 'shooter'
+  | 'racing'
+  | 'rpg'
+  | 'adventure'
+  | 'simulation'
+  | 'arcade'
+  | 'educational'
+  | 'other';
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    suggestedAssets?: string[];
+    gameConfigUpdates?: Partial<GameConfig>;
+  };
+}
+
+export interface GameConfig {
+  title: string;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  physics: boolean;
+  controls: ControlScheme;
+  scenes: GameScene[];
+  playerConfig?: PlayerConfig;
+}
+
+export interface ControlScheme {
+  type: 'keyboard' | 'touch' | 'both';
+  mappings: Record<string, string>;
+}
+
+export interface GameScene {
+  id: string;
+  name: string;
+  isStartScene: boolean;
+  objects: GameObject[];
+  background?: string;
+}
+
+export interface GameObject {
+  id: string;
+  type: 'player' | 'enemy' | 'collectible' | 'obstacle' | 'decoration' | 'trigger';
+  name: string;
+  position: { x: number; y: number; z?: number };
+  size: { width: number; height: number; depth?: number };
+  assetId?: string;
+  properties: Record<string, any>;
+}
+
+export interface PlayerConfig {
+  speed: number;
+  jumpHeight?: number;
+  health?: number;
+  abilities?: string[];
+}
+
+export interface GameAsset {
+  id: string;
+  name: string;
+  type: 'model' | 'texture' | 'sprite' | 'sound';
+  status: 'pending' | 'generating' | 'ready' | 'failed';
+  taskId?: string;
+  url?: string;
+  prompt?: string;
+}
+
+export interface GameStudioState {
+  projects: GameProject[];
+  currentProjectId: string | null;
+  isGenerating: boolean;
+  chatInput: string;
 }
 
 // Settings Types

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { createApiClient } from './api/client';
-import { useStore, useSettings, useStoreActions } from './store';
+import { useStore, useSettings, useStoreActions, useCurrentModule } from './store';
 import { useTaskPolling } from './hooks/useTaskPolling';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { getTheme } from './styles/theme';
@@ -18,6 +18,7 @@ import LoadingOverlay from './components/ui/LoadingOverlay';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import UVViewerModal from './components/ui/UVViewerModal';
 import AuthPanel from './components/ui/AuthPanel';
+import GamePreview from './components/ui/GamePreview';
 
 // Global Styles
 const GlobalStyle = createGlobalStyle`
@@ -255,10 +256,14 @@ const App: React.FC = () => {
   const { isLoading, error, auth } = useStore();
   const { ui } = useStore();
   const settings = useSettings();
+  const currentModule = useCurrentModule();
   const { closeModal, initializeTasks } = useStoreActions();
   
   // Get current theme based on settings
   const currentTheme = getTheme(settings.theme === 'auto' ? 'dark' : settings.theme);
+  
+  // Check if we're in game studio mode
+  const isGameStudioMode = currentModule === 'game-studio';
   
   // Initialize integrations
   useElectronIntegration();
@@ -330,17 +335,19 @@ const App: React.FC = () => {
               width={ui.sidebar.width}
             />
 
-            {/* Central 3D Viewport */}
-            <Viewport />
+            {/* Central Content - Game Preview or 3D Viewport */}
+            {isGameStudioMode ? <GamePreview /> : <Viewport />}
 
-            {/* Right Sidebar - Task History */}
-            <RightSidebar 
-              isCollapsed={ui.sidebar.rightCollapsed}
-            />
+            {/* Right Sidebar - Task History (hidden in game studio mode) */}
+            {!isGameStudioMode && (
+              <RightSidebar 
+                isCollapsed={ui.sidebar.rightCollapsed}
+              />
+            )}
           </MainContent>
 
-          {/* Bottom Control Bar */}
-          <BottomBar />
+          {/* Bottom Control Bar (hidden in game studio mode) */}
+          {!isGameStudioMode && <BottomBar />}
 
           {/* Overlays and Modals */}
           <SettingsPanel />

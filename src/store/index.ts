@@ -15,7 +15,12 @@ import {
   ModalType,
   ViewportTool,
   TransformMode,
-  AuthState
+  AuthState,
+  GameStudioState,
+  GameProject,
+  GameGenre,
+  ChatMessage,
+  GameConfig
 } from '../types/state';
 import { AuthStatus, UserInfo } from '../types/api';
 
@@ -123,16 +128,24 @@ const defaultAuthState: AuthState = {
   isCheckingAuth: false
 };
 
+const defaultGameStudioState: GameStudioState = {
+  projects: [],
+  currentProjectId: null,
+  isGenerating: false,
+  chatInput: ''
+};
+
 const defaultState: AppState = {
-  currentModule: 'mesh-generation',
-  currentFeature: 'text-to-mesh',
+  currentModule: 'game-studio',
+  currentFeature: 'game-ideation',
   isLoading: false,
   error: null,
   settings: initializeSettings(),
   tasks: defaultTaskState,
   ui: defaultUIState,
   system: defaultSystemState,
-  auth: defaultAuthState
+  auth: defaultAuthState,
+  gameStudio: defaultGameStudioState
 };
 
 // Store interface with actions
@@ -217,6 +230,16 @@ interface StoreState extends AppState {
   setAuthUser: (user: UserInfo | null) => void;
   loadSavedAuth: () => void;
   
+  // Game Studio actions
+  createGameProject: (genre: GameGenre, name: string) => string;
+  updateGameProject: (projectId: string, updates: Partial<GameProject>) => void;
+  deleteGameProject: (projectId: string) => void;
+  setCurrentGameProject: (projectId: string | null) => void;
+  addChatMessage: (projectId: string, message: ChatMessage) => void;
+  setGameStudioGenerating: (isGenerating: boolean) => void;
+  buildGame: (projectId: string) => Promise<void>;
+  exportGame: (projectId: string) => void;
+  
   // Utility actions
   reset: () => void;
 }
@@ -241,6 +264,7 @@ export const useStore = create<StoreState>()(
       set({ currentModule: module });
       // Reset feature when switching modules
       const defaultFeatures: Record<ModuleType, string> = {
+        'game-studio': 'game-ideation',
         'mesh-generation': 'text-to-mesh',
         'mesh-painting': 'text-painting',
         'mesh-segmentation': 'segment-mesh',
@@ -1416,6 +1440,197 @@ export const useStore = create<StoreState>()(
       });
     },
 
+    // Game Studio actions
+    createGameProject: (genre: GameGenre, name: string) => {
+      const projectId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const defaultGameConfig: GameConfig = {
+        title: name,
+        width: 800,
+        height: 600,
+        backgroundColor: '#1a1a2e',
+        physics: genre === 'platformer' || genre === 'arcade',
+        controls: {
+          type: 'both',
+          mappings: {
+            'ArrowUp': 'jump',
+            'ArrowDown': 'down',
+            'ArrowLeft': 'left',
+            'ArrowRight': 'right',
+            'Space': 'action'
+          }
+        },
+        scenes: [{
+          id: 'main',
+          name: 'Main Scene',
+          isStartScene: true,
+          objects: []
+        }],
+        playerConfig: {
+          speed: 5,
+          jumpHeight: 15,
+          health: 100,
+          abilities: []
+        }
+      };
+      
+      const newProject: GameProject = {
+        id: projectId,
+        name,
+        description: '',
+        genre,
+        status: 'ideation',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        conversation: [{
+          id: `msg_${Date.now()}`,
+          role: 'assistant',
+          content: `Welcome to Game Studio! 🎮 I'm here to help you create an amazing ${genre} game called "${name}".\n\nLet's start by discussing your vision:\n- What's the main goal of your game?\n- What makes it unique or fun?\n- Do you have any reference games in mind?\n\nTell me about your game idea and I'll help bring it to life!`,
+          timestamp: new Date()
+        }],
+        gameConfig: defaultGameConfig,
+        assets: []
+      };
+      
+      set((state) => ({
+        gameStudio: {
+          ...state.gameStudio,
+          projects: [...state.gameStudio.projects, newProject],
+          currentProjectId: projectId
+        }
+      }));
+      
+      return projectId;
+    },
+
+    updateGameProject: (projectId: string, updates: Partial<GameProject>) => {
+      set((state) => {
+        const projectIndex = state.gameStudio.projects.findIndex(p => p.id === projectId);
+        if (projectIndex === -1) return state;
+        
+        const updatedProjects = [...state.gameStudio.projects];
+        updatedProjects[projectIndex] = {
+          ...updatedProjects[projectIndex],
+          ...updates,
+          updatedAt: new Date()
+        };
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            projects: updatedProjects
+          }
+        };
+      });
+    },
+
+    deleteGameProject: (projectId: string) => {
+      set((state) => ({
+        gameStudio: {
+          ...state.gameStudio,
+          projects: state.gameStudio.projects.filter(p => p.id !== projectId),
+          currentProjectId: state.gameStudio.currentProjectId === projectId 
+            ? null 
+            : state.gameStudio.currentProjectId
+        }
+      }));
+    },
+
+    setCurrentGameProject: (projectId: string | null) => {
+      set((state) => ({
+        gameStudio: {
+          ...state.gameStudio,
+          currentProjectId: projectId
+        }
+      }));
+    },
+
+    addChatMessage: (projectId: string, message: ChatMessage) => {
+      set((state) => {
+        const projectIndex = state.gameStudio.projects.findIndex(p => p.id === projectId);
+        if (projectIndex === -1) return state;
+        
+        const updatedProjects = [...state.gameStudio.projects];
+        updatedProjects[projectIndex] = {
+          ...updatedProjects[projectIndex],
+          conversation: [...updatedProjects[projectIndex].conversation, message],
+          updatedAt: new Date()
+        };
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            projects: updatedProjects
+          }
+        };
+      });
+    },
+
+    setGameStudioGenerating: (isGenerating: boolean) => {
+      set((state) => ({
+        gameStudio: {
+          ...state.gameStudio,
+          isGenerating
+        }
+      }));
+    },
+
+    buildGame: async (projectId: string) => {
+      const state = get();
+      const project = state.gameStudio.projects.find(p => p.id === projectId);
+      if (!project) throw new Error('Project not found');
+      
+      // Import the game code generator
+      const { GameCodeGenerator } = await import('../utils/gameCodeGenerator');
+      
+      // Generate the game code
+      const gameCode = GameCodeGenerator.generateHTML5Game(project);
+      const previewUrl = GameCodeGenerator.getPreviewDataUrl(project);
+      
+      // Update project with generated code
+      set((state) => {
+        const projectIndex = state.gameStudio.projects.findIndex(p => p.id === projectId);
+        if (projectIndex === -1) return state;
+        
+        const updatedProjects = [...state.gameStudio.projects];
+        updatedProjects[projectIndex] = {
+          ...updatedProjects[projectIndex],
+          status: 'testing',
+          generatedCode: gameCode,
+          previewUrl,
+          updatedAt: new Date()
+        };
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            projects: updatedProjects
+          }
+        };
+      });
+      
+      // Add a message to the chat
+      get().addChatMessage(projectId, {
+        id: `msg_${Date.now()}`,
+        role: 'assistant',
+        content: `🎉 Your ${project.genre} game has been built successfully!\n\n**What's next:**\n- Click "Export" to download the game as an HTML file\n- The game runs in any browser, no installation needed\n- Share the file with friends or host it online\n\nWould you like to make any changes to the game?`,
+        timestamp: new Date()
+      });
+    },
+
+    exportGame: (projectId: string) => {
+      const state = get();
+      const project = state.gameStudio.projects.find(p => p.id === projectId);
+      if (!project || !project.generatedCode) {
+        throw new Error('No game code to export. Build the game first.');
+      }
+      
+      // Download the game
+      import('../utils/gameCodeGenerator').then(({ GameCodeGenerator }) => {
+        GameCodeGenerator.downloadGame(project);
+      });
+    },
+
     // Utility actions
     reset: () => {
       set(defaultState);
@@ -1486,7 +1701,16 @@ export const useStoreActions = () => {
     logout: store.logout,
     setAuthToken: store.setAuthToken,
     setAuthUser: store.setAuthUser,
-    loadSavedAuth: store.loadSavedAuth
+    loadSavedAuth: store.loadSavedAuth,
+    // Game Studio actions
+    createGameProject: store.createGameProject,
+    updateGameProject: store.updateGameProject,
+    deleteGameProject: store.deleteGameProject,
+    setCurrentGameProject: store.setCurrentGameProject,
+    addChatMessage: store.addChatMessage,
+    setGameStudioGenerating: store.setGameStudioGenerating,
+    buildGame: store.buildGame,
+    exportGame: store.exportGame
   };
 };
 
