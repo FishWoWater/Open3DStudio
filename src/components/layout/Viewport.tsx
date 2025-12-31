@@ -7,6 +7,7 @@ import { useViewport, useStoreActions } from '../../store';
 import ViewportPlaceholder from './ViewportPlaceholder';
 import TransformGizmo from '../ui/TransformGizmo';
 import ModelRenderer from '../ui/ModelRenderer';
+import ExportPanel from '../ui/ExportPanel';
 import { SelectionManager } from '../../utils/selection';
 
 const ViewportContainer = styled.main`
@@ -611,6 +612,8 @@ const Viewport: React.FC = () => {
             <i className="fas fa-upload"></i>
             {isUploading ? 'Uploading...' : 'Upload Model'}
           </UploadButton>
+          
+          <ExportPanel />
           
           <HiddenFileInput
             ref={fileInputRef}
