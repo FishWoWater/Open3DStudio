@@ -128,6 +128,23 @@ const defaultAuthState: AuthState = {
   isCheckingAuth: false
 };
 
+// Initialize game studio state from localStorage
+const initializeGameStudioState = (): GameStudioState => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const { gameProjectPersistence } = require('../services/gameProjectPersistence');
+      const savedState = gameProjectPersistence.initializeState();
+      return {
+        ...defaultGameStudioState,
+        ...savedState
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load saved game projects, using defaults:', error);
+  }
+  return defaultGameStudioState;
+};
+
 const defaultGameStudioState: GameStudioState = {
   projects: [],
   currentProjectId: null,
@@ -145,7 +162,7 @@ const defaultState: AppState = {
   ui: defaultUIState,
   system: defaultSystemState,
   auth: defaultAuthState,
-  gameStudio: defaultGameStudioState
+  gameStudio: initializeGameStudioState()
 };
 
 // Store interface with actions
@@ -1492,13 +1509,23 @@ export const useStore = create<StoreState>()(
         assets: []
       };
       
-      set((state) => ({
-        gameStudio: {
-          ...state.gameStudio,
-          projects: [...state.gameStudio.projects, newProject],
-          currentProjectId: projectId
-        }
-      }));
+      set((state) => {
+        const newProjects = [...state.gameStudio.projects, newProject];
+        
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveProjects(newProjects);
+          gameProjectPersistence.saveCurrentProjectId(projectId);
+        });
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            projects: newProjects,
+            currentProjectId: projectId
+          }
+        };
+      });
       
       return projectId;
     },
@@ -1515,6 +1542,11 @@ export const useStore = create<StoreState>()(
           updatedAt: new Date()
         };
         
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveProjects(updatedProjects);
+        });
+        
         return {
           gameStudio: {
             ...state.gameStudio,
@@ -1525,24 +1557,42 @@ export const useStore = create<StoreState>()(
     },
 
     deleteGameProject: (projectId: string) => {
-      set((state) => ({
-        gameStudio: {
-          ...state.gameStudio,
-          projects: state.gameStudio.projects.filter(p => p.id !== projectId),
-          currentProjectId: state.gameStudio.currentProjectId === projectId 
-            ? null 
-            : state.gameStudio.currentProjectId
-        }
-      }));
+      set((state) => {
+        const newProjects = state.gameStudio.projects.filter(p => p.id !== projectId);
+        const newCurrentId = state.gameStudio.currentProjectId === projectId 
+          ? null 
+          : state.gameStudio.currentProjectId;
+        
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveProjects(newProjects);
+          gameProjectPersistence.saveCurrentProjectId(newCurrentId);
+        });
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            projects: newProjects,
+            currentProjectId: newCurrentId
+          }
+        };
+      });
     },
 
     setCurrentGameProject: (projectId: string | null) => {
-      set((state) => ({
-        gameStudio: {
-          ...state.gameStudio,
-          currentProjectId: projectId
-        }
-      }));
+      set((state) => {
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveCurrentProjectId(projectId);
+        });
+        
+        return {
+          gameStudio: {
+            ...state.gameStudio,
+            currentProjectId: projectId
+          }
+        };
+      });
     },
 
     addChatMessage: (projectId: string, message: ChatMessage) => {
@@ -1556,6 +1606,11 @@ export const useStore = create<StoreState>()(
           conversation: [...updatedProjects[projectIndex].conversation, message],
           updatedAt: new Date()
         };
+        
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveProjects(updatedProjects);
+        });
         
         return {
           gameStudio: {
@@ -1600,6 +1655,11 @@ export const useStore = create<StoreState>()(
           previewUrl,
           updatedAt: new Date()
         };
+        
+        // Persist to localStorage
+        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+          gameProjectPersistence.saveProjects(updatedProjects);
+        });
         
         return {
           gameStudio: {

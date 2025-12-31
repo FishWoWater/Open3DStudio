@@ -25,6 +25,10 @@ export class GameCodeGenerator {
         return this.generatePuzzleGame(project);
       case 'arcade':
         return this.generateArcadeGame(project);
+      case 'racing':
+        return this.generateRacingGame(project);
+      case 'adventure':
+        return this.generateAdventureGame(project);
       default:
         return this.generateBasicGame(project);
     }
@@ -410,7 +414,7 @@ export class GameCodeGenerator {
           width: 40,
           height: 40,
           speed: 1 + wave * 0.3,
-          color: \`hsl(\${Math.random() * 60 + 300}, 70%, 50%)\`
+          color: \`hsl(${Math.random() * 60 + 300}, 70%, 50%)\`
         });
       }
     }
@@ -897,6 +901,602 @@ export class GameCodeGenerator {
     }
     
     requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>`;
+  }
+  
+  /**
+   * Generate a racing game
+   */
+  private static generateRacingGame(project: GameProject): string {
+    const { gameConfig } = project;
+    
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${gameConfig.title || project.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background: #1a1a2e;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #gameContainer {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    canvas { display: block; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #0f0;
+      font-size: 16px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      font-family: monospace;
+    }
+    #instructions {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <div>Speed: <span id="speed">0</span> km/h</div>
+      <div>Score: <span id="score">0</span></div>
+      <div>Distance: <span id="distance">0</span>m</div>
+    </div>
+    <div id="instructions">← → or A/D to steer</div>
+  </div>
+  
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = ${gameConfig.width};
+    canvas.height = ${gameConfig.height};
+    
+    let score = 0;
+    let distance = 0;
+    let speed = 0;
+    let maxSpeed = 200;
+    let gameOver = false;
+    
+    // Player car
+    const player = {
+      x: canvas.width / 2 - 20,
+      y: canvas.height - 100,
+      width: 40,
+      height: 70,
+      lane: 1, // 0, 1, 2
+      targetX: canvas.width / 2 - 20
+    };
+    
+    // Road properties
+    const road = {
+      width: 300,
+      lanes: 3,
+      lineHeight: 40,
+      lineGap: 20,
+      offset: 0
+    };
+    
+    // Obstacles
+    const obstacles = [];
+    let obstacleTimer = 0;
+    
+    // Input
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.code] = true);
+    document.addEventListener('keyup', e => keys[e.code] = false);
+    
+    function spawnObstacle() {
+      const lane = Math.floor(Math.random() * 3);
+      const roadLeft = (canvas.width - road.width) / 2;
+      const laneWidth = road.width / 3;
+      
+      obstacles.push({
+        x: roadLeft + lane * laneWidth + laneWidth / 2 - 20,
+        y: -80,
+        width: 40,
+        height: 70,
+        lane: lane,
+        color: ['#e74c3c', '#3498db', '#f39c12'][Math.floor(Math.random() * 3)]
+      });
+    }
+    
+    function update() {
+      if (gameOver) return;
+      
+      // Accelerate
+      speed = Math.min(maxSpeed, speed + 0.5);
+      distance += speed / 60;
+      score = Math.floor(distance / 10);
+      
+      // Update UI
+      document.getElementById('speed').textContent = Math.floor(speed);
+      document.getElementById('score').textContent = score;
+      document.getElementById('distance').textContent = Math.floor(distance);
+      
+      // Steering
+      const roadLeft = (canvas.width - road.width) / 2;
+      const laneWidth = road.width / 3;
+      
+      if (keys['ArrowLeft'] || keys['KeyA']) {
+        player.lane = Math.max(0, player.lane - 0.05);
+      }
+      if (keys['ArrowRight'] || keys['KeyD']) {
+        player.lane = Math.min(2, player.lane + 0.05);
+      }
+      
+      player.targetX = roadLeft + Math.floor(player.lane) * laneWidth + laneWidth / 2 - player.width / 2;
+      player.x += (player.targetX - player.x) * 0.1;
+      
+      // Road animation
+      road.offset += speed / 10;
+      if (road.offset > road.lineHeight + road.lineGap) {
+        road.offset = 0;
+      }
+      
+      // Spawn obstacles
+      obstacleTimer += speed / 60;
+      if (obstacleTimer > 50) {
+        spawnObstacle();
+        obstacleTimer = 0;
+      }
+      
+      // Update obstacles
+      obstacles.forEach((obs, i) => {
+        obs.y += speed / 10;
+        
+        // Collision check
+        if (obs.y + obs.height > player.y &&
+            obs.y < player.y + player.height &&
+            obs.x + obs.width > player.x &&
+            obs.x < player.x + player.width) {
+          gameOver = true;
+        }
+        
+        // Remove off-screen
+        if (obs.y > canvas.height) {
+          obstacles.splice(i, 1);
+        }
+      });
+    }
+    
+    function drawCar(x, y, width, height, color, isPlayer) {
+      // Car body
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, width, height);
+      
+      // Windshield
+      ctx.fillStyle = isPlayer ? '#87ceeb' : '#333';
+      ctx.fillRect(x + 5, y + 10, width - 10, 20);
+      
+      // Wheels
+      ctx.fillStyle = '#222';
+      ctx.fillRect(x - 5, y + 5, 8, 15);
+      ctx.fillRect(x + width - 3, y + 5, 8, 15);
+      ctx.fillRect(x - 5, y + height - 20, 8, 15);
+      ctx.fillRect(x + width - 3, y + height - 20, 8, 15);
+    }
+    
+    function draw() {
+      // Sky gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(1, '#16213e');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Road
+      const roadLeft = (canvas.width - road.width) / 2;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(roadLeft, 0, road.width, canvas.height);
+      
+      // Road edges
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(roadLeft - 5, 0, 5, canvas.height);
+      ctx.fillRect(roadLeft + road.width, 0, 5, canvas.height);
+      
+      // Lane markings
+      ctx.fillStyle = '#fff';
+      const laneWidth = road.width / 3;
+      for (let i = 1; i < 3; i++) {
+        for (let y = -road.lineHeight + road.offset; y < canvas.height; y += road.lineHeight + road.lineGap) {
+          ctx.fillRect(roadLeft + i * laneWidth - 2, y, 4, road.lineHeight);
+        }
+      }
+      
+      // Draw obstacles
+      obstacles.forEach(obs => {
+        drawCar(obs.x, obs.y, obs.width, obs.height, obs.color, false);
+      });
+      
+      // Draw player
+      drawCar(player.x, player.y, player.width, player.height, '#2ecc71', true);
+      
+      // Game over
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = 'bold 48px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('CRASH!', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.fillText('Distance: ' + Math.floor(distance) + 'm', canvas.width / 2, canvas.height / 2 + 50);
+        ctx.fillText('Click to restart', canvas.width / 2, canvas.height / 2 + 90);
+        ctx.textAlign = 'left';
+      }
+    }
+    
+    canvas.addEventListener('click', () => {
+      if (gameOver) {
+        gameOver = false;
+        score = 0;
+        distance = 0;
+        speed = 0;
+        player.lane = 1;
+        player.x = canvas.width / 2 - 20;
+        obstacles.length = 0;
+      }
+    });
+    
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    gameLoop();
+  </script>
+</body>
+</html>`;
+  }
+  
+  /**
+   * Generate an adventure game
+   */
+  private static generateAdventureGame(project: GameProject): string {
+    const { gameConfig } = project;
+    
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${gameConfig.title || project.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    #gameContainer {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    canvas { display: block; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #ffd700;
+      font-size: 14px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+    #dialog {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      border: 2px solid #ffd700;
+      display: none;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    #instructions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <div>🗝️ Keys: <span id="keys">0</span>/3</div>
+      <div>💎 Gems: <span id="gems">0</span></div>
+    </div>
+    <div id="instructions">
+      WASD/Arrows to move<br>
+      E to interact
+    </div>
+    <div id="dialog"></div>
+  </div>
+  
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = ${gameConfig.width};
+    canvas.height = ${gameConfig.height};
+    
+    const TILE_SIZE = 40;
+    const COLS = Math.floor(canvas.width / TILE_SIZE);
+    const ROWS = Math.floor(canvas.height / TILE_SIZE);
+    
+    let keys = 0;
+    let gems = 0;
+    let dialogText = '';
+    let dialogTimer = 0;
+    let gameWon = false;
+    
+    // Player
+    const player = {
+      x: TILE_SIZE * 1.5,
+      y: TILE_SIZE * 1.5,
+      width: 30,
+      height: 30,
+      speed: 3,
+      color: '#4ecdc4'
+    };
+    
+    // Map: 0=floor, 1=wall, 2=key, 3=gem, 4=npc, 5=door
+    const map = [];
+    const items = [];
+    const npcs = [];
+    
+    // Generate simple dungeon
+    function generateMap() {
+      for (let y = 0; y < ROWS; y++) {
+        map[y] = [];
+        for (let x = 0; x < COLS; x++) {
+          // Border walls
+          if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) {
+            map[y][x] = 1;
+          }
+          // Random walls
+          else if (Math.random() < 0.15 && !(x < 3 && y < 3)) {
+            map[y][x] = 1;
+          }
+          else {
+            map[y][x] = 0;
+          }
+        }
+      }
+      
+      // Add door at exit
+      map[ROWS - 2][COLS - 2] = 5;
+      map[ROWS - 3][COLS - 2] = 0;
+      
+      // Add keys
+      const keyPositions = [
+        { x: COLS - 3, y: 2 },
+        { x: 2, y: ROWS - 3 },
+        { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2) }
+      ];
+      keyPositions.forEach(pos => {
+        map[pos.y][pos.x] = 0;
+        items.push({ x: pos.x * TILE_SIZE + TILE_SIZE / 2, y: pos.y * TILE_SIZE + TILE_SIZE / 2, type: 'key' });
+      });
+      
+      // Add gems
+      for (let i = 0; i < 5; i++) {
+        const x = Math.floor(Math.random() * (COLS - 4)) + 2;
+        const y = Math.floor(Math.random() * (ROWS - 4)) + 2;
+        if (map[y][x] === 0) {
+          items.push({ x: x * TILE_SIZE + TILE_SIZE / 2, y: y * TILE_SIZE + TILE_SIZE / 2, type: 'gem' });
+        }
+      }
+      
+      // Add NPC
+      npcs.push({
+        x: Math.floor(COLS / 2) * TILE_SIZE + TILE_SIZE / 2,
+        y: 2 * TILE_SIZE + TILE_SIZE / 2,
+        message: "Find all 3 keys to unlock the exit door! Good luck, adventurer!"
+      });
+    }
+    
+    generateMap();
+    
+    // Input
+    const keysPressed = {};
+    document.addEventListener('keydown', e => {
+      keysPressed[e.code] = true;
+      if (e.code === 'KeyE') interact();
+    });
+    document.addEventListener('keyup', e => keysPressed[e.code] = false);
+    
+    function showDialog(text) {
+      dialogText = text;
+      dialogTimer = 180; // 3 seconds
+      document.getElementById('dialog').textContent = text;
+      document.getElementById('dialog').style.display = 'block';
+    }
+    
+    function interact() {
+      // Check NPC interaction
+      npcs.forEach(npc => {
+        const dx = player.x + player.width / 2 - npc.x;
+        const dy = player.y + player.height / 2 - npc.y;
+        if (Math.sqrt(dx * dx + dy * dy) < TILE_SIZE) {
+          showDialog(npc.message);
+        }
+      });
+      
+      // Check door
+      const tileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+      const tileY = Math.floor((player.y + player.height / 2) / TILE_SIZE);
+      if (map[tileY] && map[tileY][tileX] === 5) {
+        if (keys >= 3) {
+          gameWon = true;
+          showDialog("🎉 Congratulations! You escaped the dungeon!");
+        } else {
+          showDialog("The door is locked. You need " + (3 - keys) + " more key(s).");
+        }
+      }
+    }
+    
+    function update() {
+      if (gameWon) return;
+      
+      // Movement
+      let dx = 0, dy = 0;
+      if (keysPressed['ArrowUp'] || keysPressed['KeyW']) dy = -player.speed;
+      if (keysPressed['ArrowDown'] || keysPressed['KeyS']) dy = player.speed;
+      if (keysPressed['ArrowLeft'] || keysPressed['KeyA']) dx = -player.speed;
+      if (keysPressed['ArrowRight'] || keysPressed['KeyD']) dx = player.speed;
+      
+      // Check collision
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+      
+      const checkCollision = (x, y) => {
+        const corners = [
+          { x: x, y: y },
+          { x: x + player.width, y: y },
+          { x: x, y: y + player.height },
+          { x: x + player.width, y: y + player.height }
+        ];
+        return corners.some(c => {
+          const tileX = Math.floor(c.x / TILE_SIZE);
+          const tileY = Math.floor(c.y / TILE_SIZE);
+          return map[tileY] && (map[tileY][tileX] === 1 || map[tileY][tileX] === 5);
+        });
+      };
+      
+      if (!checkCollision(newX, player.y)) player.x = newX;
+      if (!checkCollision(player.x, newY)) player.y = newY;
+      
+      // Collect items
+      items.forEach((item, i) => {
+        const dx = player.x + player.width / 2 - item.x;
+        const dy = player.y + player.height / 2 - item.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 20) {
+          if (item.type === 'key') {
+            keys++;
+            showDialog("🗝️ You found a key! (" + keys + "/3)");
+          } else {
+            gems++;
+            showDialog("💎 You found a gem!");
+          }
+          items.splice(i, 1);
+        }
+      });
+      
+      // Update UI
+      document.getElementById('keys').textContent = keys;
+      document.getElementById('gems').textContent = gems;
+      
+      // Dialog timer
+      if (dialogTimer > 0) {
+        dialogTimer--;
+        if (dialogTimer === 0) {
+          document.getElementById('dialog').style.display = 'none';
+        }
+      }
+    }
+    
+    function draw() {
+      // Clear
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw map
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const tile = map[y][x];
+          if (tile === 1) {
+            ctx.fillStyle = '#4a4a6a';
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.strokeStyle = '#5a5a7a';
+            ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          } else if (tile === 5) {
+            ctx.fillStyle = keys >= 3 ? '#2ecc71' : '#8b4513';
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '20px sans-serif';
+            ctx.fillText('🚪', x * TILE_SIZE + 8, y * TILE_SIZE + 28);
+          } else {
+            ctx.fillStyle = '#2a2a4a';
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          }
+        }
+      }
+      
+      // Draw items
+      ctx.font = '20px sans-serif';
+      items.forEach(item => {
+        ctx.fillText(item.type === 'key' ? '🗝️' : '💎', item.x - 10, item.y + 7);
+      });
+      
+      // Draw NPCs
+      npcs.forEach(npc => {
+        ctx.fillText('🧙', npc.x - 12, npc.y + 8);
+      });
+      
+      // Draw player
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(player.x + 6, player.y + 6, 6, 6);
+      ctx.fillRect(player.x + 18, player.y + 6, 6, 6);
+      
+      // Win screen
+      if (gameWon) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏆 Victory! 🏆', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Gems collected: ' + gems, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.textAlign = 'left';
+      }
+    }
+    
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+    
+    showDialog("Welcome, adventurer! Find 3 keys to escape. Press E to interact.");
+    gameLoop();
   </script>
 </body>
 </html>`;

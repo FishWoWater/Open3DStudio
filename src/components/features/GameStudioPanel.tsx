@@ -20,12 +20,36 @@ const ProjectHeader = styled.div`
   justify-content: space-between;
   padding-bottom: ${props => props.theme.spacing.md};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
+  flex-wrap: wrap;
+  gap: ${props => props.theme.spacing.sm};
+`;
+
+const ProjectSelector = styled.select`
+  background: ${props => props.theme.colors.background.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  color: ${props => props.theme.colors.text.primary};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: pointer;
+  max-width: 150px;
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary[500]};
+  }
 `;
 
 const ProjectTitle = styled.h4`
   margin: 0;
   color: ${props => props.theme.colors.text.primary};
   font-size: ${props => props.theme.typography.fontSize.base};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
 `;
 
 const NewProjectButton = styled.button`
@@ -415,6 +439,8 @@ const GameStudioPanel: React.FC = () => {
     updateGameProject, 
     addChatMessage,
     setGameStudioGenerating,
+    setCurrentGameProject,
+    deleteGameProject,
     buildGame,
     addNotification
   } = useStoreActions();
@@ -446,6 +472,22 @@ const GameStudioPanel: React.FC = () => {
     };
     
     createGameProject(genre, genreNames[genre]);
+  };
+  
+  const handleProjectChange = (projectId: string) => {
+    if (projectId === 'new') {
+      // Show genre selection (handled by welcome screen)
+      setCurrentGameProject(null);
+    } else {
+      setCurrentGameProject(projectId);
+    }
+  };
+  
+  const handleDeleteProject = () => {
+    if (!currentProject) return;
+    if (window.confirm(`Delete "${currentProject.name}"? This cannot be undone.`)) {
+      deleteGameProject(currentProject.id);
+    }
   };
   
   const handleSendMessage = async () => {
@@ -565,10 +607,31 @@ const GameStudioPanel: React.FC = () => {
     <Container>
       <ProjectHeader>
         <ProjectTitle>{currentProject.name}</ProjectTitle>
-        <NewProjectButton onClick={() => handleNewProject('other')}>
-          <i className="fas fa-plus"></i>
-          New
-        </NewProjectButton>
+        <HeaderActions>
+          {gameStudio.projects.length > 1 && (
+            <ProjectSelector
+              value={currentProject.id}
+              onChange={(e) => handleProjectChange(e.target.value)}
+              title="Switch project"
+            >
+              {gameStudio.projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+              <option value="new">+ New Project</option>
+            </ProjectSelector>
+          )}
+          <NewProjectButton onClick={() => handleNewProject('other')} title="Create new project">
+            <i className="fas fa-plus"></i>
+            New
+          </NewProjectButton>
+          <NewProjectButton 
+            onClick={handleDeleteProject} 
+            title="Delete project"
+            style={{ background: '#dc3545' }}
+          >
+            <i className="fas fa-trash"></i>
+          </NewProjectButton>
+        </HeaderActions>
       </ProjectHeader>
       
       <StatusBar>
