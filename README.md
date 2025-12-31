@@ -161,6 +161,14 @@ You can deploy Open3DStudio on Replit with just a few clicks:
 ## Vibe Coding 
 Check out [Vibe Coding Prompts](./docs/vibe_coding/) for the whole developing progress.
 
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [UPGRADE_RECOMMENDATIONS.md](./UPGRADE_RECOMMENDATIONS.md) | **NEW** - Comprehensive upgrade recommendations using open-source GitHub libraries |
+| [QUICK_START_IMPROVEMENTS.md](./QUICK_START_IMPROVEMENTS.md) | Immediate improvements and quick wins (1-4 weeks) |
+| [PLATFORM_TRANSFORMATION_PROPOSAL.md](./PLATFORM_TRANSFORMATION_PROPOSAL.md) | Complete 18-week platform transformation roadmap |
+| [REVIEW_SUMMARY.md](./REVIEW_SUMMARY.md) | Executive summary and action plan |
 
 ## License
 The code and application is licensed under [Apache2.0 License](LICENSE).
