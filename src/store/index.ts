@@ -128,10 +128,22 @@ const defaultAuthState: AuthState = {
   isCheckingAuth: false
 };
 
+// Helper function for game project persistence
+const persistGameProjects = (projects: GameProject[], currentProjectId: string | null = null) => {
+  import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
+    gameProjectPersistence.saveProjects(projects);
+    if (currentProjectId !== null) {
+      gameProjectPersistence.saveCurrentProjectId(currentProjectId);
+    }
+  });
+};
+
 // Initialize game studio state from localStorage
 const initializeGameStudioState = (): GameStudioState => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
+      // Using require for synchronous initialization at startup
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { gameProjectPersistence } = require('../services/gameProjectPersistence');
       const savedState = gameProjectPersistence.initializeState();
       return {
@@ -1512,11 +1524,8 @@ export const useStore = create<StoreState>()(
       set((state) => {
         const newProjects = [...state.gameStudio.projects, newProject];
         
-        // Persist to localStorage
-        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
-          gameProjectPersistence.saveProjects(newProjects);
-          gameProjectPersistence.saveCurrentProjectId(projectId);
-        });
+        // Persist to localStorage using helper
+        persistGameProjects(newProjects, projectId);
         
         return {
           gameStudio: {
@@ -1542,10 +1551,8 @@ export const useStore = create<StoreState>()(
           updatedAt: new Date()
         };
         
-        // Persist to localStorage
-        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
-          gameProjectPersistence.saveProjects(updatedProjects);
-        });
+        // Persist to localStorage using helper
+        persistGameProjects(updatedProjects);
         
         return {
           gameStudio: {
@@ -1563,11 +1570,8 @@ export const useStore = create<StoreState>()(
           ? null 
           : state.gameStudio.currentProjectId;
         
-        // Persist to localStorage
-        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
-          gameProjectPersistence.saveProjects(newProjects);
-          gameProjectPersistence.saveCurrentProjectId(newCurrentId);
-        });
+        // Persist to localStorage using helper
+        persistGameProjects(newProjects, newCurrentId);
         
         return {
           gameStudio: {
@@ -1581,7 +1585,7 @@ export const useStore = create<StoreState>()(
 
     setCurrentGameProject: (projectId: string | null) => {
       set((state) => {
-        // Persist to localStorage
+        // Persist current project ID
         import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
           gameProjectPersistence.saveCurrentProjectId(projectId);
         });
@@ -1607,10 +1611,8 @@ export const useStore = create<StoreState>()(
           updatedAt: new Date()
         };
         
-        // Persist to localStorage
-        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
-          gameProjectPersistence.saveProjects(updatedProjects);
-        });
+        // Persist to localStorage using helper
+        persistGameProjects(updatedProjects);
         
         return {
           gameStudio: {
@@ -1656,10 +1658,8 @@ export const useStore = create<StoreState>()(
           updatedAt: new Date()
         };
         
-        // Persist to localStorage
-        import('../services/gameProjectPersistence').then(({ gameProjectPersistence }) => {
-          gameProjectPersistence.saveProjects(updatedProjects);
-        });
+        // Persist to localStorage using helper
+        persistGameProjects(updatedProjects);
         
         return {
           gameStudio: {
