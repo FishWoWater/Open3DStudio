@@ -9,6 +9,11 @@
 The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion, mesh re-topologize and mesh uv unwrapping etc.
 
 ## CHANGELOG 
+### Updates 12.31 (Game Development Enhancements)
+* Added **Export Panel** for exporting models and scenes to game-ready formats (GLB/GLTF)
+* Export individual models or entire scenes for Unity, Unreal Engine, and Blender
+* Improved game development workflow documentation
+
 ### Updates 12.07 (Releasing V1.0.0)
 * Improving the UI display of the historical tasks 
 * Some minor fixes
@@ -43,6 +48,7 @@ The available models are up to the API backend, refer to [3DAIGC-API](https://gi
 - Task management with progress and history
 - Multi-format support: GLB, OBJ, FBX etc.
 - File uploading: uploading images / meshes for later processing
+- **Export to game engines**: Export models/scenes as GLB (Unity, Unreal) or GLTF (Blender)
 - Anonymous mode(all clients see all jobs) or user mode(require register and login)
 - All locally deployed, it's scalable and easy to add a feature/model both at the frontend and backend
 
@@ -62,6 +68,37 @@ npm run dist-mac
 npm run dist-win
 ```
 
+## 🎮 3D Game Asset Workflow
+
+Open3DStudio streamlines the creation of 3D game assets. Here's a typical workflow:
+
+### 1. Generate 3D Models
+- Use **MeshGen** to create models from text prompts or reference images
+- AI generates game-ready 3D meshes automatically
+
+### 2. Optimize for Games
+- **LowPoly Retopo**: Reduce polygon count for better game performance
+- **UV Unwrap**: Prepare models for custom textures
+- **TextureGen**: Generate or paint textures on your models
+
+### 3. Add Animation Support
+- **Auto Rig**: Automatically add skeletons to character models
+- Preview skeleton visualization in the viewport
+
+### 4. Export to Game Engines
+Use the **Export** button in the viewport toolbar:
+- **GLB format**: Best for Unity, Unreal Engine, and web games
+- **GLTF format**: Best for Blender and further editing
+
+### Supported Game Engines
+| Engine | Recommended Format | Notes |
+|--------|-------------------|-------|
+| Unity | GLB | Use glTFast or UniGLTF for import |
+| Unreal Engine | GLB | Native glTF support in UE5+ |
+| Godot | GLB/GLTF | Native support |
+| Three.js/Web | GLB | Optimal for web games |
+| Blender | GLTF | For further editing |
+
 ## Deploy on Replit
 
 You can deploy Open3DStudio on Replit with just a few clicks:
@@ -76,6 +113,13 @@ You can deploy Open3DStudio on Replit with just a few clicks:
    - Add `REACT_APP_API_BASE_URL` with your 3DAIGC-API backend URL
 
 4. **Run**: Click the "Run" button to start the development server
+
+### Replit Deployment Tips
+
+- **Performance**: Replit provides sufficient resources for the React frontend
+- **API Backend**: Deploy [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) on a GPU-enabled server (e.g., Vast.ai, RunPod, or your own hardware)
+- **Persistence**: Your generated models persist in task history; download them before session ends
+- **Collaboration**: Share your Replit URL for real-time collaboration
 
 > **Note**: Replit deployment runs the web version only (no Electron desktop features). Make sure you have the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) backend deployed and accessible from your Replit instance.
 
