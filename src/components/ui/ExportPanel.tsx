@@ -102,6 +102,25 @@ const MenuItemDescription = styled.span`
   margin-left: auto;
 `;
 
+const TipsContainer = styled.div`
+  font-size: 11px;
+  color: ${props => props.theme.colors.text.muted};
+  padding: 0 8px;
+  line-height: 1.4;
+  
+  p {
+    margin: 0 0 4px 0;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  strong {
+    color: ${props => props.theme.colors.text.secondary};
+  }
+`;
+
 interface ExportPanelProps {
   onExporting?: (isExporting: boolean) => void;
 }
@@ -225,19 +244,14 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ onExporting }) => {
 
         <MenuSection>
           <SectionTitle>Tips</SectionTitle>
-          <div style={{ 
-            fontSize: '11px', 
-            color: 'var(--text-muted)', 
-            padding: '0 8px',
-            lineHeight: '1.4'
-          }}>
-            <p style={{ margin: '0 0 4px 0' }}>
+          <TipsContainer>
+            <p>
               <strong>GLB</strong>: Binary format, best for games
             </p>
-            <p style={{ margin: 0 }}>
+            <p>
               <strong>GLTF</strong>: JSON format, editable in Blender
             </p>
-          </div>
+          </TipsContainer>
         </MenuSection>
       </DropdownMenu>
     </ExportDropdown>

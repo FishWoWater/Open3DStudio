@@ -3,6 +3,10 @@ import styled, { keyframes } from 'styled-components';
 import { useStore, useStoreActions } from '../../store';
 import { GameProject, ChatMessage, GameGenre, GameConfig } from '../../types/state';
 
+// Constants for AI response timing (milliseconds)
+const AI_RESPONSE_BASE_DELAY_MS = 1000;
+const AI_RESPONSE_RANDOM_DELAY_MS = 1000;
+
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -473,7 +477,7 @@ const GameStudioPanel: React.FC = () => {
       });
       
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    }, AI_RESPONSE_BASE_DELAY_MS + Math.random() * AI_RESPONSE_RANDOM_DELAY_MS);
   };
   
   const handleKeyPress = (e: React.KeyboardEvent) => {

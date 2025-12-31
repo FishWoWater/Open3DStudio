@@ -1,5 +1,9 @@
 import { GameProject, GameConfig, GameScene } from '../types/state';
 
+// Game visual constants
+const SHOOTER_BACKGROUND_STAR_COUNT = 50;
+const ARCADE_SNAKE_BASE_HUE = 120; // Green spectrum start for snake segments
+
 /**
  * Generates playable HTML5 game code from a GameProject configuration
  */
@@ -486,9 +490,9 @@ export class GameCodeGenerator {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Stars background
+      // Stars background (${SHOOTER_BACKGROUND_STAR_COUNT} stars)
       ctx.fillStyle = '#fff';
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < ${SHOOTER_BACKGROUND_STAR_COUNT}; i++) {
         ctx.fillRect(
           (i * 137 + Date.now() * 0.01) % canvas.width,
           (i * 97) % canvas.height,
@@ -853,9 +857,9 @@ export class GameCodeGenerator {
       );
       ctx.fill();
       
-      // Snake
+      // Snake - color gradient from green (hue ${ARCADE_SNAKE_BASE_HUE}) to yellow
       snake.forEach((segment, i) => {
-        const hue = 120 + i * 3;
+        const hue = ${ARCADE_SNAKE_BASE_HUE} + i * 3;
         ctx.fillStyle = \`hsl(\${hue}, 70%, 50%)\`;
         ctx.fillRect(
           segment.x * gridSize + 1,
