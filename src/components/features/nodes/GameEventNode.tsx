@@ -27,10 +27,12 @@ const NodeSubtitle = styled.div`
 `;
 
 export const GameEventNode: React.FC<NodeProps> = ({ data }) => {
+  const nodeData = data as { label?: string; eventType?: string };
+  
   return (
     <NodeContainer>
-      <NodeTitle>{data.label || 'Game Event'}</NodeTitle>
-      <NodeSubtitle>{data.eventType || 'custom'}</NodeSubtitle>
+      <NodeTitle>{nodeData?.label || 'Game Event'}</NodeTitle>
+      <NodeSubtitle>{nodeData?.eventType || 'custom'}</NodeSubtitle>
       <Handle
         type="source"
         position={Position.Right}

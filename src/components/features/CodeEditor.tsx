@@ -12,7 +12,7 @@ const EditorContainer = styled.div`
   width: 100%;
   height: 100%;
   background: ${props => props.theme.colors.background.primary};
-  border: 1px solid ${props => props.theme.colors.border.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: 8px;
   overflow: hidden;
 `;
@@ -23,7 +23,7 @@ const EditorHeader = styled.div`
   align-items: center;
   padding: 12px 16px;
   background: ${props => props.theme.colors.background.secondary};
-  border-bottom: 1px solid ${props => props.theme.colors.border.primary};
+  border-bottom: 1px solid ${props => props.theme.colors.border.default};
 `;
 
 const EditorTitle = styled.div`
@@ -41,14 +41,14 @@ const ActionButton = styled.button`
   padding: 6px 12px;
   background: ${props => props.theme.colors.background.tertiary};
   color: ${props => props.theme.colors.text.primary};
-  border: 1px solid ${props => props.theme.colors.border.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${props => props.theme.colors.accent.primary};
+    background: ${props => props.theme.colors.primary[500]};
   }
 
   &:disabled {
@@ -162,34 +162,37 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       declare const THREE: any;
     `;
 
-    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
-    });
+    try {
+      // Try to set diagnostics and compiler options if available
+      const jsDefaults = (monaco.languages.typescript as any).javascriptDefaults;
+      
+      if (jsDefaults) {
+        jsDefaults.setDiagnosticsOptions({
+          noSemanticValidation: false,
+          noSyntaxValidation: false,
+        });
 
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ES2020,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.CommonJS,
-      noEmit: true,
-      esModuleInterop: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      allowJs: true,
-      typeRoots: ['node_modules/@types'],
-    });
+        jsDefaults.setCompilerOptions({
+          target: (monaco.languages.typescript as any).ScriptTarget?.ES2020 || 99,
+          allowNonTsExtensions: true,
+          moduleResolution: 2,
+          module: 1,
+          noEmit: true,
+          esModuleInterop: true,
+          jsx: 2,
+          allowJs: true,
+          typeRoots: ['node_modules/@types'],
+        });
 
-    // Add game API declarations
-    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-      gameApiDefs,
-      'game.d.ts'
-    );
+        // Add game API declarations
+        jsDefaults.addExtraLib(gameApiDefs, 'game.d.ts');
 
-    // Add Three.js basic types
-    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-      `declare const THREE: any;`,
-      'three.d.ts'
-    );
+        // Add Three.js basic types
+        jsDefaults.addExtraLib(`declare const THREE: any;`, 'three.d.ts');
+      }
+    } catch (error) {
+      console.warn('Could not configure Monaco TypeScript settings:', error);
+    }
   };
 
   const handleSave = () => {

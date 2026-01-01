@@ -35,6 +35,8 @@ const OutputsContainer = styled.div`
 `;
 
 export const ConditionNode: React.FC<NodeProps> = ({ data }) => {
+  const nodeData = data as { label?: string; condition?: string };
+  
   return (
     <NodeContainer>
       <Handle
@@ -42,8 +44,8 @@ export const ConditionNode: React.FC<NodeProps> = ({ data }) => {
         position={Position.Left}
         style={{ background: '#fff', width: 10, height: 10 }}
       />
-      <NodeTitle>{data.label || 'Condition'}</NodeTitle>
-      <NodeCondition>{data.condition || 'true'}</NodeCondition>
+      <NodeTitle>{nodeData?.label || 'Condition'}</NodeTitle>
+      <NodeCondition>{nodeData?.condition || 'true'}</NodeCondition>
       <OutputsContainer>
         <div>True</div>
         <div>False</div>

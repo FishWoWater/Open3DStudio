@@ -27,6 +27,8 @@ const NodeSubtitle = styled.div`
 `;
 
 export const ActionNode: React.FC<NodeProps> = ({ data }) => {
+  const nodeData = data as { label?: string; actionType?: string };
+  
   return (
     <NodeContainer>
       <Handle
@@ -34,8 +36,8 @@ export const ActionNode: React.FC<NodeProps> = ({ data }) => {
         position={Position.Left}
         style={{ background: '#fff', width: 10, height: 10 }}
       />
-      <NodeTitle>{data.label || 'Action'}</NodeTitle>
-      <NodeSubtitle>{data.actionType || 'custom'}</NodeSubtitle>
+      <NodeTitle>{nodeData?.label || 'Action'}</NodeTitle>
+      <NodeSubtitle>{nodeData?.actionType || 'custom'}</NodeSubtitle>
       <Handle
         type="source"
         position={Position.Right}

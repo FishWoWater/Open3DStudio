@@ -28,6 +28,8 @@ const NodeValue = styled.div`
 `;
 
 export const VariableNode: React.FC<NodeProps> = ({ data }) => {
+  const nodeData = data as { variableName?: string; variableValue?: any };
+  
   return (
     <NodeContainer>
       <Handle
@@ -35,8 +37,8 @@ export const VariableNode: React.FC<NodeProps> = ({ data }) => {
         position={Position.Left}
         style={{ background: '#fff', width: 10, height: 10 }}
       />
-      <NodeTitle>{data.variableName || 'Variable'}</NodeTitle>
-      <NodeValue>= {data.variableValue !== undefined ? data.variableValue : '0'}</NodeValue>
+      <NodeTitle>{nodeData?.variableName || 'Variable'}</NodeTitle>
+      <NodeValue>= {nodeData?.variableValue !== undefined ? nodeData.variableValue : '0'}</NodeValue>
       <Handle
         type="source"
         position={Position.Right}

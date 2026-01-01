@@ -17,6 +17,7 @@ import {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import styled from 'styled-components';
@@ -39,7 +40,7 @@ const EditorContainer = styled.div`
 
   .react-flow__node {
     background: ${props => props.theme.colors.background.secondary};
-    border: 1px solid ${props => props.theme.colors.border.primary};
+    border: 1px solid ${props => props.theme.colors.border.default};
     border-radius: 8px;
     padding: 12px;
     color: ${props => props.theme.colors.text.primary};
@@ -47,14 +48,14 @@ const EditorContainer = styled.div`
   }
 
   .react-flow__edge-path {
-    stroke: ${props => props.theme.colors.accent.primary};
+    stroke: ${props => props.theme.colors.primary[500]};
     stroke-width: 2;
   }
 
   .react-flow__controls {
     button {
       background: ${props => props.theme.colors.background.secondary};
-      border: 1px solid ${props => props.theme.colors.border.primary};
+      border: 1px solid ${props => props.theme.colors.border.default};
       color: ${props => props.theme.colors.text.primary};
 
       &:hover {
@@ -73,7 +74,7 @@ const Toolbar = styled.div`
   gap: 8px;
   padding: 12px;
   background: ${props => props.theme.colors.background.secondary}cc;
-  border: 1px solid ${props => props.theme.colors.border.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: 8px;
   backdrop-filter: blur(12px);
 `;
@@ -82,24 +83,24 @@ const ToolButton = styled.button`
   padding: 8px 16px;
   background: ${props => props.theme.colors.background.tertiary};
   color: ${props => props.theme.colors.text.primary};
-  border: 1px solid ${props => props.theme.colors.border.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${props => props.theme.colors.accent.primary};
+    background: ${props => props.theme.colors.primary[500]};
     transform: translateY(-1px);
   }
 `;
 
 // Node types configuration
-const nodeTypes = {
-  gameEvent: GameEventNode,
-  action: ActionNode,
-  condition: ConditionNode,
-  variable: VariableNode,
+const nodeTypes: NodeTypes = {
+  gameEvent: GameEventNode as any,
+  action: ActionNode as any,
+  condition: ConditionNode as any,
+  variable: VariableNode as any,
 };
 
 // Initial nodes for demonstration
