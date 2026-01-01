@@ -5,8 +5,27 @@
  */
 
 import { getApiClient } from '../api/client';
+import { JobInfo, JobResultInfo } from '../types/api';
 import { GameGenre, GameProject } from '../types/state';
 import { indexedDBStorage, StoredAsset } from './indexedDBStorage';
+
+/**
+ * Extended job info interface with result file ID for asset generation
+ * This extends the base JobInfo to include properties that may be present
+ * in job results from asset generation endpoints
+ */
+interface ExtendedJobInfo extends JobInfo {
+  result_file_id?: string;
+}
+
+/**
+ * Extended job result info with mesh metadata
+ */
+interface ExtendedJobResultInfo extends JobResultInfo {
+  thumbnail_url?: string;
+  vertex_count?: number;
+  triangle_count?: number;
+}
 
 export interface AssetRequirement {
   name: string;
@@ -182,6 +201,80 @@ const ASSET_TEMPLATES: Record<GameGenre, AssetRequirement[]> = {
       priority: 'medium',
       needsOptimization: true
     }
+  ],
+  rpg: [
+    {
+      name: 'RPG Hero',
+      prompt: 'fantasy hero character, low-poly, game-ready, medieval armor',
+      type: 'character',
+      priority: 'critical',
+      needsRig: true,
+      needsOptimization: true
+    },
+    {
+      name: 'Enemy Monster',
+      prompt: 'fantasy monster enemy, low-poly, menacing appearance',
+      type: 'character',
+      priority: 'high',
+      needsOptimization: true
+    },
+    {
+      name: 'Health Potion',
+      prompt: 'health potion bottle, glowing red, low-poly',
+      type: 'collectible',
+      priority: 'high',
+      needsOptimization: true
+    }
+  ],
+  simulation: [
+    {
+      name: 'Building Block',
+      prompt: 'simple building block, modular, low-poly',
+      type: 'environment',
+      priority: 'critical',
+      needsOptimization: true
+    },
+    {
+      name: 'Resource Item',
+      prompt: 'generic resource item, low-poly, game collectible',
+      type: 'collectible',
+      priority: 'high',
+      needsOptimization: true
+    }
+  ],
+  educational: [
+    {
+      name: 'Interactive Object',
+      prompt: 'colorful educational object, low-poly, friendly design',
+      type: 'prop',
+      priority: 'critical',
+      needsOptimization: true
+    },
+    {
+      name: 'Character Guide',
+      prompt: 'friendly cartoon character, low-poly, educational mascot',
+      type: 'character',
+      priority: 'high',
+      needsRig: true,
+      needsOptimization: true
+    }
+  ],
+  other: [
+    {
+      name: 'Generic Character',
+      prompt: 'simple character, low-poly, game-ready',
+      type: 'character',
+      priority: 'critical',
+      needsRig: true,
+      needsOptimization: true
+    },
+    {
+      name: 'Generic Object',
+      prompt: 'simple geometric object, low-poly',
+      type: 'prop',
+      priority: 'high',
+      needsOptimization: true
+    }
   ]
 };
 
@@ -232,66 +325,146 @@ export class BatchAssetGenerator {
   }
 
   /**
+   * Helper function to extract result_file_id from job info
+   * This handles the case where the API returns additional properties
+   * that may not be in the base type definition
+   */
+  private getResultFileId(jobInfo: ExtendedJobInfo): string | undefined {
+    return jobInfo.result_file_id;
+  }
+
+  /**
    * Generate a single asset with all optimizations
    */
   private async generateSingleAsset(
     requirement: AssetRequirement,
     projectId: string
   ): Promise<GeneratedAsset> {
-    // Step 1: Generate base mesh
+    // Step 1: Generate base mesh using text-to-textured-mesh
     this.reportProgress('Generating mesh', 1, 4, requirement.name);
-    const meshResult = await this.apiClient.generateMesh({
-      prompt: requirement.prompt,
-      target: 'game-asset'
+    const meshResult = await this.apiClient.textToTexturedMesh({
+      text_prompt: requirement.prompt,
+      output_format: 'glb'
     });
 
-    let currentMeshId = meshResult.id;
+    // Get job ID to poll for completion
+    const currentJobId = meshResult.job_id;
+    
+    if (!currentJobId) {
+      throw new Error(`Failed to start mesh generation for ${requirement.name}`);
+    }
+
+    // Poll for job completion
+    let jobInfo = await this.apiClient.getJobStatus(currentJobId) as ExtendedJobInfo;
+    while (jobInfo.status !== 'completed' && jobInfo.status !== 'failed') {
+      await this.delay(2000);
+      jobInfo = await this.apiClient.getJobStatus(currentJobId) as ExtendedJobInfo;
+    }
+
+    if (jobInfo.status === 'failed') {
+      throw new Error(`Mesh generation failed for ${requirement.name}`);
+    }
+
+    let currentMeshFileId = this.getResultFileId(jobInfo);
 
     // Step 2: Auto-rig if needed
-    if (requirement.needsRig) {
+    if (requirement.needsRig && currentMeshFileId) {
       this.reportProgress('Rigging character', 2, 4, requirement.name);
-      const rigResult = await this.apiClient.autoRig({
-        meshId: currentMeshId
+      const rigResult = await this.apiClient.generateRig({
+        mesh_file_id: currentMeshFileId,
+        rig_mode: 'full',
+        output_format: 'glb'
       });
-      currentMeshId = rigResult.id;
+      
+      if (rigResult.job_id) {
+        // Poll for rig completion
+        let rigJob = await this.apiClient.getJobStatus(rigResult.job_id) as ExtendedJobInfo;
+        while (rigJob.status !== 'completed' && rigJob.status !== 'failed') {
+          await this.delay(2000);
+          rigJob = await this.apiClient.getJobStatus(rigResult.job_id) as ExtendedJobInfo;
+        }
+        
+        const rigResultFileId = this.getResultFileId(rigJob);
+        if (rigJob.status === 'completed' && rigResultFileId) {
+          currentMeshFileId = rigResultFileId;
+        }
+      }
     }
 
     // Step 3: Optimize if needed
-    if (requirement.needsOptimization) {
+    if (requirement.needsOptimization && currentMeshFileId) {
       this.reportProgress('Optimizing for game', 3, 4, requirement.name);
 
       // Retopology to reduce poly count
-      const retopoResult = await this.apiClient.retopologyMesh({
-        meshId: currentMeshId,
-        targetFaceCount: this.getTargetPolyCount(requirement.type)
+      const retopoResult = await this.apiClient.retopologizeMesh({
+        mesh_file_id: currentMeshFileId,
+        target_vertex_count: this.getTargetPolyCount(requirement.type),
+        poly_type: 'tri',
+        output_format: 'glb'
       });
-      currentMeshId = retopoResult.id;
+      
+      if (retopoResult.job_id) {
+        // Poll for retopology completion
+        let retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id) as ExtendedJobInfo;
+        while (retopoJob.status !== 'completed' && retopoJob.status !== 'failed') {
+          await this.delay(2000);
+          retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id) as ExtendedJobInfo;
+        }
+        
+        const retopoResultFileId = this.getResultFileId(retopoJob);
+        if (retopoJob.status === 'completed' && retopoResultFileId) {
+          currentMeshFileId = retopoResultFileId;
+        }
+      }
 
       // UV unwrap for textures
-      const unwrapResult = await this.apiClient.unwrapMesh({
-        meshId: currentMeshId
+      const unwrapResult = await this.apiClient.unwrapMeshUV({
+        mesh_file_id: currentMeshFileId,
+        output_format: 'glb'
       });
-      currentMeshId = unwrapResult.id;
+      
+      if (unwrapResult.job_id) {
+        // Poll for UV unwrap completion
+        let unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id) as ExtendedJobInfo;
+        while (unwrapJob.status !== 'completed' && unwrapJob.status !== 'failed') {
+          await this.delay(2000);
+          unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id) as ExtendedJobInfo;
+        }
+        
+        const unwrapResultFileId = this.getResultFileId(unwrapJob);
+        if (unwrapJob.status === 'completed' && unwrapResultFileId) {
+          currentMeshFileId = unwrapResultFileId;
+        }
+      }
     }
 
     // Step 4: Get final mesh data
     this.reportProgress('Finalizing', 4, 4, requirement.name);
-    const finalMesh = await this.apiClient.getMesh(currentMeshId);
+    const finalMeshInfo = currentMeshFileId 
+      ? await this.apiClient.getJobResultInfo(currentJobId) as ExtendedJobResultInfo
+      : null;
 
     return {
       id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: requirement.name,
       type: requirement.type,
-      meshId: currentMeshId,
-      glbUrl: finalMesh.glbUrl,
-      thumbnailUrl: finalMesh.thumbnailUrl,
+      meshId: currentMeshFileId || currentJobId,
+      glbUrl: currentMeshFileId ? `/api/v1/system/jobs/${currentJobId}/download` : '',
+      thumbnailUrl: finalMeshInfo?.thumbnail_url,
       metadata: {
-        vertices: finalMesh.vertexCount || 0,
-        triangles: finalMesh.triangleCount || 0,
+        vertices: finalMeshInfo?.vertex_count || 0,
+        triangles: finalMeshInfo?.triangle_count || 0,
         hasRig: requirement.needsRig || false,
         hasTextures: true
       }
     };
+  }
+
+  /**
+   * Delay helper for polling
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
