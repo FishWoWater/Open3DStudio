@@ -6,7 +6,7 @@ export interface RaycastResult {
   point: THREE.Vector3;
   distance: number;
   face?: any;
-  faceIndex?: number;
+  faceIndex?: number | null;
   modelId?: string;
 }
 
