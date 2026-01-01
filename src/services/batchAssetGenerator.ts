@@ -5,8 +5,27 @@
  */
 
 import { getApiClient } from '../api/client';
+import { JobInfo, JobResultInfo } from '../types/api';
 import { GameGenre, GameProject } from '../types/state';
 import { indexedDBStorage, StoredAsset } from './indexedDBStorage';
+
+/**
+ * Extended job info interface with result file ID for asset generation
+ * This extends the base JobInfo to include properties that may be present
+ * in job results from asset generation endpoints
+ */
+interface ExtendedJobInfo extends JobInfo {
+  result_file_id?: string;
+}
+
+/**
+ * Extended job result info with mesh metadata
+ */
+interface ExtendedJobResultInfo extends JobResultInfo {
+  thumbnail_url?: string;
+  vertex_count?: number;
+  triangle_count?: number;
+}
 
 export interface AssetRequirement {
   name: string;
@@ -306,6 +325,15 @@ export class BatchAssetGenerator {
   }
 
   /**
+   * Helper function to extract result_file_id from job info
+   * This handles the case where the API returns additional properties
+   * that may not be in the base type definition
+   */
+  private getResultFileId(jobInfo: ExtendedJobInfo): string | undefined {
+    return jobInfo.result_file_id;
+  }
+
+  /**
    * Generate a single asset with all optimizations
    */
   private async generateSingleAsset(
@@ -327,17 +355,17 @@ export class BatchAssetGenerator {
     }
 
     // Poll for job completion
-    let jobInfo = await this.apiClient.getJobStatus(currentJobId);
+    let jobInfo = await this.apiClient.getJobStatus(currentJobId) as ExtendedJobInfo;
     while (jobInfo.status !== 'completed' && jobInfo.status !== 'failed') {
       await this.delay(2000);
-      jobInfo = await this.apiClient.getJobStatus(currentJobId);
+      jobInfo = await this.apiClient.getJobStatus(currentJobId) as ExtendedJobInfo;
     }
 
     if (jobInfo.status === 'failed') {
       throw new Error(`Mesh generation failed for ${requirement.name}`);
     }
 
-    let currentMeshFileId = (jobInfo as any).result_file_id;
+    let currentMeshFileId = this.getResultFileId(jobInfo);
 
     // Step 2: Auto-rig if needed
     if (requirement.needsRig && currentMeshFileId) {
@@ -350,14 +378,15 @@ export class BatchAssetGenerator {
       
       if (rigResult.job_id) {
         // Poll for rig completion
-        let rigJob = await this.apiClient.getJobStatus(rigResult.job_id);
+        let rigJob = await this.apiClient.getJobStatus(rigResult.job_id) as ExtendedJobInfo;
         while (rigJob.status !== 'completed' && rigJob.status !== 'failed') {
           await this.delay(2000);
-          rigJob = await this.apiClient.getJobStatus(rigResult.job_id);
+          rigJob = await this.apiClient.getJobStatus(rigResult.job_id) as ExtendedJobInfo;
         }
         
-        if (rigJob.status === 'completed' && (rigJob as any).result_file_id) {
-          currentMeshFileId = (rigJob as any).result_file_id;
+        const rigResultFileId = this.getResultFileId(rigJob);
+        if (rigJob.status === 'completed' && rigResultFileId) {
+          currentMeshFileId = rigResultFileId;
         }
       }
     }
@@ -376,14 +405,15 @@ export class BatchAssetGenerator {
       
       if (retopoResult.job_id) {
         // Poll for retopology completion
-        let retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id);
+        let retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id) as ExtendedJobInfo;
         while (retopoJob.status !== 'completed' && retopoJob.status !== 'failed') {
           await this.delay(2000);
-          retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id);
+          retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id) as ExtendedJobInfo;
         }
         
-        if (retopoJob.status === 'completed' && (retopoJob as any).result_file_id) {
-          currentMeshFileId = (retopoJob as any).result_file_id;
+        const retopoResultFileId = this.getResultFileId(retopoJob);
+        if (retopoJob.status === 'completed' && retopoResultFileId) {
+          currentMeshFileId = retopoResultFileId;
         }
       }
 
@@ -395,14 +425,15 @@ export class BatchAssetGenerator {
       
       if (unwrapResult.job_id) {
         // Poll for UV unwrap completion
-        let unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id);
+        let unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id) as ExtendedJobInfo;
         while (unwrapJob.status !== 'completed' && unwrapJob.status !== 'failed') {
           await this.delay(2000);
-          unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id);
+          unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id) as ExtendedJobInfo;
         }
         
-        if (unwrapJob.status === 'completed' && (unwrapJob as any).result_file_id) {
-          currentMeshFileId = (unwrapJob as any).result_file_id;
+        const unwrapResultFileId = this.getResultFileId(unwrapJob);
+        if (unwrapJob.status === 'completed' && unwrapResultFileId) {
+          currentMeshFileId = unwrapResultFileId;
         }
       }
     }
@@ -410,7 +441,7 @@ export class BatchAssetGenerator {
     // Step 4: Get final mesh data
     this.reportProgress('Finalizing', 4, 4, requirement.name);
     const finalMeshInfo = currentMeshFileId 
-      ? await this.apiClient.getJobResultInfo(currentJobId)
+      ? await this.apiClient.getJobResultInfo(currentJobId) as ExtendedJobResultInfo
       : null;
 
     return {
@@ -419,10 +450,10 @@ export class BatchAssetGenerator {
       type: requirement.type,
       meshId: currentMeshFileId || currentJobId,
       glbUrl: currentMeshFileId ? `/api/v1/system/jobs/${currentJobId}/download` : '',
-      thumbnailUrl: (finalMeshInfo as any)?.thumbnail_url,
+      thumbnailUrl: finalMeshInfo?.thumbnail_url,
       metadata: {
-        vertices: (finalMeshInfo as any)?.vertex_count || 0,
-        triangles: (finalMeshInfo as any)?.triangle_count || 0,
+        vertices: finalMeshInfo?.vertex_count || 0,
+        triangles: finalMeshInfo?.triangle_count || 0,
         hasRig: requirement.needsRig || false,
         hasTextures: true
       }
