@@ -6,6 +6,7 @@
   "main": "build/electron.js",
   "homepage": "./",
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.15.0",
     "@react-three/postprocessing": "^2.19.1",
@@ -15,7 +16,10 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/three": "^0.160.0",
+    "@xyflow/react": "^12.10.0",
+    "ai": "^6.0.5",
     "axios": "^1.6.0",
+    "camera-controls": "^3.1.0",
     "dexie": "^4.2.1",
     "framer-motion": "^11.0.0",
     "leva": "^0.10.1",
@@ -31,8 +35,10 @@
     "styled-components": "^6.1.0",
     "three": "^0.160.1",
     "three-stdlib": "^2.29.0",
+    "troika-three-text": "^0.52.4",
     "uuid": "^9.0.0",
     "web-vitals": "^3.5.0",
+    "workbox-window": "^7.4.0",
     "zustand": "^4.4.0"
   },
   "devDependencies": {

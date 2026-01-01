@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open3DStudio - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .icon {
+      font-size: 120px;
+      margin-bottom: 30px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    p {
+      font-size: 18px;
+      color: #b8c5d6;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 40px;
+    }
+
+    .feature {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .feature h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+
+    .feature p {
+      font-size: 14px;
+      margin: 0;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .status {
+      margin-top: 40px;
+      padding: 15px;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      border-radius: 8px;
+      color: #ffc107;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>
+      Open3DStudio requires an internet connection to access AI features and the 3DAIGC API backend.
+      However, you can still work with previously cached assets and projects.
+    </p>
+
+    <div class="features">
+      <div class="feature">
+        <h3>✨ Cached Assets</h3>
+        <p>Access your previously loaded 3D models and textures</p>
+      </div>
+      <div class="feature">
+        <h3>🎮 Offline Projects</h3>
+        <p>Continue working on saved game projects</p>
+      </div>
+      <div class="feature">
+        <h3>💾 Local Storage</h3>
+        <p>Your work is safely stored locally using IndexedDB</p>
+      </div>
+    </div>
+
+    <button onclick="tryAgain()">Try to Reconnect</button>
+
+    <div class="status">
+      <strong>Note:</strong> AI generation features (MeshGen, TextureGen, etc.) require an active internet connection.
+    </div>
+  </div>
+
+  <script>
+    function tryAgain() {
+      window.location.reload();
+    }
+
+    // Auto-reload when back online
+    window.addEventListener('online', () => {
+      console.log('Connection restored!');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
