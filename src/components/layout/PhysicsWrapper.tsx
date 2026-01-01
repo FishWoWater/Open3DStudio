@@ -6,10 +6,14 @@
 import React, { ReactNode, Suspense } from 'react';
 import { Physics, RigidBody, CuboidCollider, BallCollider, CapsuleCollider } from '@react-three/rapier';
 import type { RigidBodyProps, RapierRigidBody } from '@react-three/rapier';
-import * as THREE from 'three';
 
 /**
  * Physics world configuration
+ * @property gravity - [x, y, z] gravity forces in m/s². Default: [0, -9.81, 0] (Earth gravity)
+ * @property debug - Enable visual debug rendering of physics bodies
+ * @property timestep - Physics timestep. Use number for fixed timestep or 'vary' for variable
+ * @property interpolate - Interpolate physics state between frames for smoother rendering
+ * @property paused - Pause physics simulation
  */
 export interface PhysicsConfig {
   gravity: [number, number, number];
@@ -80,6 +84,18 @@ export const PhysicsWorld: React.FC<PhysicsWorldProps> = ({
   );
 };
 
+/**
+ * Collider dimension arguments for different collider types
+ */
+export interface ColliderArgs {
+  /** Cuboid dimensions: [halfWidth, halfHeight, halfDepth] */
+  cuboid?: [number, number, number];
+  /** Ball radius */
+  ball?: [number];
+  /** Capsule dimensions: [halfHeight, radius] */
+  capsule?: [number, number];
+}
+
 interface DynamicBodyProps {
   children: ReactNode;
   position?: [number, number, number];
@@ -88,7 +104,9 @@ interface DynamicBodyProps {
   restitution?: number;
   friction?: number;
   colliderType?: 'cuboid' | 'ball' | 'capsule' | 'auto';
-  onCollision?: (event: any) => void;
+  /** Custom collider dimensions. If not provided, uses default sizes */
+  colliderArgs?: ColliderArgs;
+  onCollision?: (event: unknown) => void;
   rigidBodyRef?: React.RefObject<RapierRigidBody>;
 }
 
@@ -104,9 +122,15 @@ export const DynamicBody: React.FC<DynamicBodyProps> = ({
   restitution = 0.3,
   friction = 0.5,
   colliderType = 'auto',
+  colliderArgs,
   onCollision,
   rigidBodyRef
 }) => {
+  // Default collider sizes
+  const cuboidSize = colliderArgs?.cuboid ?? [0.5, 0.5, 0.5];
+  const ballRadius = colliderArgs?.ball ?? [0.5];
+  const capsuleSize = colliderArgs?.capsule ?? [0.25, 0.5];
+
   return (
     <RigidBody
       ref={rigidBodyRef}
@@ -119,9 +143,9 @@ export const DynamicBody: React.FC<DynamicBodyProps> = ({
       colliders={colliderType === 'auto' ? 'hull' : false}
       onCollisionEnter={onCollision}
     >
-      {colliderType === 'cuboid' && <CuboidCollider args={[0.5, 0.5, 0.5]} />}
-      {colliderType === 'ball' && <BallCollider args={[0.5]} />}
-      {colliderType === 'capsule' && <CapsuleCollider args={[0.25, 0.5]} />}
+      {colliderType === 'cuboid' && <CuboidCollider args={cuboidSize} />}
+      {colliderType === 'ball' && <BallCollider args={ballRadius} />}
+      {colliderType === 'capsule' && <CapsuleCollider args={capsuleSize} />}
       {children}
     </RigidBody>
   );
@@ -134,6 +158,8 @@ interface StaticBodyProps {
   restitution?: number;
   friction?: number;
   colliderType?: 'cuboid' | 'auto';
+  /** Custom collider dimensions for cuboid: [halfWidth, halfHeight, halfDepth] */
+  colliderArgs?: [number, number, number];
 }
 
 /**
@@ -146,7 +172,8 @@ export const StaticBody: React.FC<StaticBodyProps> = ({
   rotation = [0, 0, 0],
   restitution = 0.1,
   friction = 0.8,
-  colliderType = 'auto'
+  colliderType = 'auto',
+  colliderArgs = [5, 0.5, 5]
 }) => {
   return (
     <RigidBody
@@ -157,7 +184,7 @@ export const StaticBody: React.FC<StaticBodyProps> = ({
       friction={friction}
       colliders={colliderType === 'auto' ? 'hull' : false}
     >
-      {colliderType === 'cuboid' && <CuboidCollider args={[5, 0.5, 5]} />}
+      {colliderType === 'cuboid' && <CuboidCollider args={colliderArgs} />}
       {children}
     </RigidBody>
   );

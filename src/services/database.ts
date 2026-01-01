@@ -32,18 +32,18 @@ export interface GameProject {
   createdAt: Date;
 }
 
-// Cache entry types
-export interface CacheEntry {
+// Cache entry types - using unknown for type safety, consumers should cast appropriately
+export interface CacheEntry<T = unknown> {
   key: string;
-  value: any;
+  value: T;
   timestamp: number;
   expiresAt: number;
 }
 
-// Settings types
-export interface AppSettings {
+// Settings types - using unknown for type safety, consumers should cast appropriately
+export interface AppSettings<T = unknown> {
   key: string;
-  value: any;
+  value: T;
   updatedAt: Date;
 }
 
@@ -55,8 +55,8 @@ export class Open3DStudioDB extends Dexie {
   // Declare tables
   assets!: Table<Asset3D, string>;
   projects!: Table<GameProject, string>;
-  cache!: Table<CacheEntry, string>;
-  settings!: Table<AppSettings, string>;
+  cache!: Table<CacheEntry<unknown>, string>;
+  settings!: Table<AppSettings<unknown>, string>;
 
   constructor() {
     super('Open3DStudioDB');
@@ -144,8 +144,11 @@ export class Open3DStudioDB extends Dexie {
 
   /**
    * Save to cache with TTL
+   * @param key - Cache key
+   * @param value - Value to cache
+   * @param ttlMinutes - Time to live in minutes (default: 60)
    */
-  async setCache(key: string, value: any, ttlMinutes: number = 60): Promise<void> {
+  async setCache<T>(key: string, value: T, ttlMinutes: number = 60): Promise<void> {
     const now = Date.now();
     await this.cache.put({
       key,
@@ -157,8 +160,10 @@ export class Open3DStudioDB extends Dexie {
 
   /**
    * Get from cache (returns null if expired)
+   * @param key - Cache key
+   * @returns Cached value or null if not found/expired
    */
-  async getCache(key: string): Promise<any | null> {
+  async getCache<T = unknown>(key: string): Promise<T | null> {
     const entry = await this.cache.get(key);
     if (!entry) return null;
 
@@ -168,7 +173,7 @@ export class Open3DStudioDB extends Dexie {
       return null;
     }
 
-    return entry.value;
+    return entry.value as T;
   }
 
   /**
@@ -194,8 +199,10 @@ export class Open3DStudioDB extends Dexie {
 
   /**
    * Save app settings
+   * @param key - Setting key
+   * @param value - Setting value
    */
-  async saveSetting(key: string, value: any): Promise<void> {
+  async saveSetting<T>(key: string, value: T): Promise<void> {
     await this.settings.put({
       key,
       value,
@@ -205,21 +212,24 @@ export class Open3DStudioDB extends Dexie {
 
   /**
    * Get app setting
+   * @param key - Setting key
+   * @returns Setting value or undefined if not found
    */
-  async getSetting<T = any>(key: string): Promise<T | undefined> {
+  async getSetting<T = unknown>(key: string): Promise<T | undefined> {
     const setting = await this.settings.get(key);
-    return setting?.value;
+    return setting?.value as T | undefined;
   }
 
   /**
    * Get all settings
+   * @returns Record of all settings
    */
-  async getAllSettings(): Promise<Record<string, any>> {
+  async getAllSettings(): Promise<Record<string, unknown>> {
     const settings = await this.settings.toArray();
     return settings.reduce((acc, setting) => {
       acc[setting.key] = setting.value;
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, unknown>);
   }
 
   /**

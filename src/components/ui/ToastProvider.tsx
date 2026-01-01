@@ -73,8 +73,9 @@ export const useToast = () => {
   /**
    * Show toast with promise handling
    * Automatically shows loading, success, and error states
+   * Returns the original promise result
    */
-  const showAsyncTask = async <T,>(
+  const showAsyncTask = <T,>(
     promise: Promise<T>,
     messages: {
       loading: string;
@@ -82,23 +83,20 @@ export const useToast = () => {
       error: string | ((error: Error) => string);
     }
   ): Promise<T> => {
-    return new Promise((resolve, reject) => {
-      toast.promise(promise, {
-        loading: messages.loading,
-        success: (data) => {
-          resolve(data);
-          return typeof messages.success === 'function' 
-            ? messages.success(data) 
-            : messages.success;
-        },
-        error: (error) => {
-          reject(error);
-          return typeof messages.error === 'function'
-            ? messages.error(error)
-            : messages.error;
-        }
-      });
+    toast.promise(promise, {
+      loading: messages.loading,
+      success: (data) => {
+        return typeof messages.success === 'function' 
+          ? messages.success(data) 
+          : messages.success;
+      },
+      error: (error) => {
+        return typeof messages.error === 'function'
+          ? messages.error(error)
+          : messages.error;
+      }
     });
+    return promise;
   };
 
   /**
