@@ -8,7 +8,9 @@ entrypoint = "src/index.tsx"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run start"]
+# For production deployment, build and serve static files
+build = ["sh", "-c", "npm install && CI=false npm run build"]
+run = ["sh", "-c", "npx serve -s build -l 3000"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
@@ -16,5 +18,11 @@ localPort = 3000
 externalPort = 80
 
 [env]
+# Disable browser auto-open (not available in Replit environment)
 BROWSER = "none"
+# Allow connections from Replit's dev domain
 DANGEROUSLY_DISABLE_HOST_CHECK = "true"
+# Prevent ESLint warnings from breaking the build
+CI = "false"
+# Set Node environment
+NODE_ENV = "development"
