@@ -4,6 +4,7 @@ import { createApiClient } from './api/client';
 import { useStore, useSettings, useStoreActions, useCurrentModule } from './store';
 import { useTaskPolling } from './hooks/useTaskPolling';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useEnhancedKeyboardShortcuts } from './hooks/useEnhancedKeyboardShortcuts';
 import { getTheme } from './styles/theme';
 
 // Layout Components
@@ -19,6 +20,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import UVViewerModal from './components/ui/UVViewerModal';
 import AuthPanel from './components/ui/AuthPanel';
 import GamePreview from './components/ui/GamePreview';
+import { ToastProvider } from './components/ui/ToastProvider';
 
 // Global Styles
 const GlobalStyle = createGlobalStyle`
@@ -279,8 +281,11 @@ const App: React.FC = () => {
     pollingInterval: settings.pollingInterval
   });
 
-  // Initialize keyboard shortcuts
+  // Initialize keyboard shortcuts (legacy)
   useKeyboardShortcuts();
+  
+  // Initialize enhanced keyboard shortcuts with react-hotkeys-hook
+  useEnhancedKeyboardShortcuts({ enabled: true });
 
   // Handle successful authentication
   const handleAuthComplete = async () => {
@@ -322,55 +327,57 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={currentTheme}>
       <GlobalStyle />
-      <ErrorBoundary>
-        <AppContainer>
-          {/* Top Navigation Bar */}
-          <TopBar />
+      <ToastProvider>
+        <ErrorBoundary>
+          <AppContainer>
+            {/* Top Navigation Bar */}
+            <TopBar />
 
-          {/* Main Content Area */}
-          <MainContent>
-            {/* Left Sidebar - Feature Controls */}
-            <LeftSidebar 
-              isCollapsed={ui.sidebar.leftCollapsed}
-              width={ui.sidebar.width}
-            />
+            {/* Main Content Area */}
+            <MainContent>
+              {/* Left Sidebar - Feature Controls */}
+              <LeftSidebar 
+                isCollapsed={ui.sidebar.leftCollapsed}
+                width={ui.sidebar.width}
+              />
 
-            {/* Central Content - Game Preview or 3D Viewport */}
-            {isGameStudioMode ? <GamePreview /> : <Viewport />}
+              {/* Central Content - Game Preview or 3D Viewport */}
+              {isGameStudioMode ? <GamePreview /> : <Viewport />}
 
-            {/* Right Sidebar - Task History (hidden in game studio mode) */}
-            {!isGameStudioMode && (
-              <RightSidebar 
-                isCollapsed={ui.sidebar.rightCollapsed}
+              {/* Right Sidebar - Task History (hidden in game studio mode) */}
+              {!isGameStudioMode && (
+                <RightSidebar 
+                  isCollapsed={ui.sidebar.rightCollapsed}
+                />
+              )}
+            </MainContent>
+
+            {/* Bottom Control Bar (hidden in game studio mode) */}
+            {!isGameStudioMode && <BottomBar />}
+
+            {/* Overlays and Modals */}
+            <SettingsPanel />
+            <NotificationContainer />
+            
+            {/* UV Viewer Modal */}
+            {ui.modal.type === 'uv-viewer' && (
+              <UVViewerModal
+                isOpen={ui.modal.isOpen}
+                model={ui.modal.data?.model || null}
+                onClose={closeModal}
               />
             )}
-          </MainContent>
-
-          {/* Bottom Control Bar (hidden in game studio mode) */}
-          {!isGameStudioMode && <BottomBar />}
-
-          {/* Overlays and Modals */}
-          <SettingsPanel />
-          <NotificationContainer />
-          
-          {/* UV Viewer Modal */}
-          {ui.modal.type === 'uv-viewer' && (
-            <UVViewerModal
-              isOpen={ui.modal.isOpen}
-              model={ui.modal.data?.model || null}
-              onClose={closeModal}
-            />
-          )}
-          
-          {/* Global Loading Overlay */}
-          {isLoading && (
-            <LoadingOverlay 
-              isVisible={isLoading}
-              message="Processing..."
-            />
-          )}
-        </AppContainer>
-      </ErrorBoundary>
+            
+            {/* Global Loading Overlay */}
+            {isLoading && (
+              <LoadingOverlay 
+                isVisible={isLoading}
+                message="Processing..."
+              />
+            )}
+          </AppContainer>
+        </ErrorBoundary>
+      </ToastProvider>
     </ThemeProvider>
   );
 };
