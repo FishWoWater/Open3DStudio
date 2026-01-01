@@ -47,10 +47,11 @@ const AssetPreview: React.FC<{ asset: StoredAsset }> = ({ asset }) => {
             (child as THREE.Mesh).geometry.dispose();
           }
           if ((child as THREE.Mesh).material) {
-            const materials = Array.isArray((child as THREE.Mesh).material)
-              ? (child as THREE.Mesh).material
-              : [(child as THREE.Mesh).material];
-            materials.forEach((material: any) => material.dispose());
+            const meshMaterial = (child as THREE.Mesh).material;
+            const materials: THREE.Material[] = Array.isArray(meshMaterial)
+              ? meshMaterial
+              : [meshMaterial];
+            materials.forEach((material) => material.dispose());
           }
         });
       }

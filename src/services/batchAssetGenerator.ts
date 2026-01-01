@@ -182,6 +182,80 @@ const ASSET_TEMPLATES: Record<GameGenre, AssetRequirement[]> = {
       priority: 'medium',
       needsOptimization: true
     }
+  ],
+  rpg: [
+    {
+      name: 'RPG Hero',
+      prompt: 'fantasy hero character, low-poly, game-ready, medieval armor',
+      type: 'character',
+      priority: 'critical',
+      needsRig: true,
+      needsOptimization: true
+    },
+    {
+      name: 'Enemy Monster',
+      prompt: 'fantasy monster enemy, low-poly, menacing appearance',
+      type: 'character',
+      priority: 'high',
+      needsOptimization: true
+    },
+    {
+      name: 'Health Potion',
+      prompt: 'health potion bottle, glowing red, low-poly',
+      type: 'collectible',
+      priority: 'high',
+      needsOptimization: true
+    }
+  ],
+  simulation: [
+    {
+      name: 'Building Block',
+      prompt: 'simple building block, modular, low-poly',
+      type: 'environment',
+      priority: 'critical',
+      needsOptimization: true
+    },
+    {
+      name: 'Resource Item',
+      prompt: 'generic resource item, low-poly, game collectible',
+      type: 'collectible',
+      priority: 'high',
+      needsOptimization: true
+    }
+  ],
+  educational: [
+    {
+      name: 'Interactive Object',
+      prompt: 'colorful educational object, low-poly, friendly design',
+      type: 'prop',
+      priority: 'critical',
+      needsOptimization: true
+    },
+    {
+      name: 'Character Guide',
+      prompt: 'friendly cartoon character, low-poly, educational mascot',
+      type: 'character',
+      priority: 'high',
+      needsRig: true,
+      needsOptimization: true
+    }
+  ],
+  other: [
+    {
+      name: 'Generic Character',
+      prompt: 'simple character, low-poly, game-ready',
+      type: 'character',
+      priority: 'critical',
+      needsRig: true,
+      needsOptimization: true
+    },
+    {
+      name: 'Generic Object',
+      prompt: 'simple geometric object, low-poly',
+      type: 'prop',
+      priority: 'high',
+      needsOptimization: true
+    }
   ]
 };
 
@@ -238,60 +312,128 @@ export class BatchAssetGenerator {
     requirement: AssetRequirement,
     projectId: string
   ): Promise<GeneratedAsset> {
-    // Step 1: Generate base mesh
+    // Step 1: Generate base mesh using text-to-textured-mesh
     this.reportProgress('Generating mesh', 1, 4, requirement.name);
-    const meshResult = await this.apiClient.generateMesh({
-      prompt: requirement.prompt,
-      target: 'game-asset'
+    const meshResult = await this.apiClient.textToTexturedMesh({
+      text_prompt: requirement.prompt,
+      output_format: 'glb'
     });
 
-    let currentMeshId = meshResult.id;
+    // Get job ID to poll for completion
+    const currentJobId = meshResult.job_id;
+    
+    if (!currentJobId) {
+      throw new Error(`Failed to start mesh generation for ${requirement.name}`);
+    }
+
+    // Poll for job completion
+    let jobInfo = await this.apiClient.getJobStatus(currentJobId);
+    while (jobInfo.status !== 'completed' && jobInfo.status !== 'failed') {
+      await this.delay(2000);
+      jobInfo = await this.apiClient.getJobStatus(currentJobId);
+    }
+
+    if (jobInfo.status === 'failed') {
+      throw new Error(`Mesh generation failed for ${requirement.name}`);
+    }
+
+    let currentMeshFileId = (jobInfo as any).result_file_id;
 
     // Step 2: Auto-rig if needed
-    if (requirement.needsRig) {
+    if (requirement.needsRig && currentMeshFileId) {
       this.reportProgress('Rigging character', 2, 4, requirement.name);
-      const rigResult = await this.apiClient.autoRig({
-        meshId: currentMeshId
+      const rigResult = await this.apiClient.generateRig({
+        mesh_file_id: currentMeshFileId,
+        rig_mode: 'full',
+        output_format: 'glb'
       });
-      currentMeshId = rigResult.id;
+      
+      if (rigResult.job_id) {
+        // Poll for rig completion
+        let rigJob = await this.apiClient.getJobStatus(rigResult.job_id);
+        while (rigJob.status !== 'completed' && rigJob.status !== 'failed') {
+          await this.delay(2000);
+          rigJob = await this.apiClient.getJobStatus(rigResult.job_id);
+        }
+        
+        if (rigJob.status === 'completed' && (rigJob as any).result_file_id) {
+          currentMeshFileId = (rigJob as any).result_file_id;
+        }
+      }
     }
 
     // Step 3: Optimize if needed
-    if (requirement.needsOptimization) {
+    if (requirement.needsOptimization && currentMeshFileId) {
       this.reportProgress('Optimizing for game', 3, 4, requirement.name);
 
       // Retopology to reduce poly count
-      const retopoResult = await this.apiClient.retopologyMesh({
-        meshId: currentMeshId,
-        targetFaceCount: this.getTargetPolyCount(requirement.type)
+      const retopoResult = await this.apiClient.retopologizeMesh({
+        mesh_file_id: currentMeshFileId,
+        target_vertex_count: this.getTargetPolyCount(requirement.type),
+        poly_type: 'tri',
+        output_format: 'glb'
       });
-      currentMeshId = retopoResult.id;
+      
+      if (retopoResult.job_id) {
+        // Poll for retopology completion
+        let retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id);
+        while (retopoJob.status !== 'completed' && retopoJob.status !== 'failed') {
+          await this.delay(2000);
+          retopoJob = await this.apiClient.getJobStatus(retopoResult.job_id);
+        }
+        
+        if (retopoJob.status === 'completed' && (retopoJob as any).result_file_id) {
+          currentMeshFileId = (retopoJob as any).result_file_id;
+        }
+      }
 
       // UV unwrap for textures
-      const unwrapResult = await this.apiClient.unwrapMesh({
-        meshId: currentMeshId
+      const unwrapResult = await this.apiClient.unwrapMeshUV({
+        mesh_file_id: currentMeshFileId,
+        output_format: 'glb'
       });
-      currentMeshId = unwrapResult.id;
+      
+      if (unwrapResult.job_id) {
+        // Poll for UV unwrap completion
+        let unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id);
+        while (unwrapJob.status !== 'completed' && unwrapJob.status !== 'failed') {
+          await this.delay(2000);
+          unwrapJob = await this.apiClient.getJobStatus(unwrapResult.job_id);
+        }
+        
+        if (unwrapJob.status === 'completed' && (unwrapJob as any).result_file_id) {
+          currentMeshFileId = (unwrapJob as any).result_file_id;
+        }
+      }
     }
 
     // Step 4: Get final mesh data
     this.reportProgress('Finalizing', 4, 4, requirement.name);
-    const finalMesh = await this.apiClient.getMesh(currentMeshId);
+    const finalMeshInfo = currentMeshFileId 
+      ? await this.apiClient.getJobResultInfo(currentJobId)
+      : null;
 
     return {
       id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: requirement.name,
       type: requirement.type,
-      meshId: currentMeshId,
-      glbUrl: finalMesh.glbUrl,
-      thumbnailUrl: finalMesh.thumbnailUrl,
+      meshId: currentMeshFileId || currentJobId,
+      glbUrl: currentMeshFileId ? `/api/v1/system/jobs/${currentJobId}/download` : '',
+      thumbnailUrl: (finalMeshInfo as any)?.thumbnail_url,
       metadata: {
-        vertices: finalMesh.vertexCount || 0,
-        triangles: finalMesh.triangleCount || 0,
+        vertices: (finalMeshInfo as any)?.vertex_count || 0,
+        triangles: (finalMeshInfo as any)?.triangle_count || 0,
         hasRig: requirement.needsRig || false,
         hasTextures: true
       }
     };
+  }
+
+  /**
+   * Delay helper for polling
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
