@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ProjectWizard from './ProjectWizard';
 import styled, { keyframes } from 'styled-components';
 import { useStore, useStoreActions } from '../../store';
 import { GameProject, ChatMessage, GameGenre, GameConfig } from '../../types/state';
@@ -559,46 +560,20 @@ const GameStudioPanel: React.FC = () => {
     }
   };
   
-  // Welcome screen for new users
-  if (!currentProject) {
+  // Project creation wizard for new users
+  const [showWizard, setShowWizard] = useState(!currentProject);
+  if (showWizard) {
     return (
       <Container>
-        <WelcomeContainer>
-          <WelcomeIcon>
-            <i className="fas fa-gamepad"></i>
-          </WelcomeIcon>
-          <WelcomeTitle>Game Studio</WelcomeTitle>
-          <WelcomeText>
-            Create games with AI! Describe your game idea, and I'll help you build it with auto-generated 3D assets.
-          </WelcomeText>
-          
-          <GenreGrid>
-            <GenreButton onClick={() => handleNewProject('platformer')}>
-              <i className="fas fa-running"></i>
-              <span>Platformer</span>
-            </GenreButton>
-            <GenreButton onClick={() => handleNewProject('puzzle')}>
-              <i className="fas fa-puzzle-piece"></i>
-              <span>Puzzle</span>
-            </GenreButton>
-            <GenreButton onClick={() => handleNewProject('shooter')}>
-              <i className="fas fa-crosshairs"></i>
-              <span>Shooter</span>
-            </GenreButton>
-            <GenreButton onClick={() => handleNewProject('arcade')}>
-              <i className="fas fa-ghost"></i>
-              <span>Arcade</span>
-            </GenreButton>
-            <GenreButton onClick={() => handleNewProject('racing')}>
-              <i className="fas fa-car"></i>
-              <span>Racing</span>
-            </GenreButton>
-            <GenreButton onClick={() => handleNewProject('adventure')}>
-              <i className="fas fa-compass"></i>
-              <span>Adventure</span>
-            </GenreButton>
-          </GenreGrid>
-        </WelcomeContainer>
+        <ProjectWizard
+          onComplete={({ type, template, name }) => {
+            // Map wizard selections to genre and type
+            let genre = template;
+            if (!['platformer', 'shooter', 'puzzle', 'rpg'].includes(genre)) genre = 'other';
+            createGameProject(genre, name, type); // type: '2d' or '3d'
+            setShowWizard(false);
+          }}
+        />
       </Container>
     );
   }

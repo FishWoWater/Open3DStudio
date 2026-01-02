@@ -9,6 +9,7 @@ import { getTheme } from './styles/theme';
 
 // Layout Components
 import TopBar from './components/layout/TopBar';
+import SidebarNav from './components/layout/SidebarNav';
 import LeftSidebar from './components/layout/LeftSidebar';
 import RightSidebar from './components/layout/RightSidebar';
 import Viewport from './components/layout/Viewport';
@@ -330,11 +331,15 @@ const App: React.FC = () => {
       <ToastProvider>
         <ErrorBoundary>
           <AppContainer>
+
             {/* Top Navigation Bar */}
             <TopBar />
 
-            {/* Main Content Area */}
+            {/* Main Content Area with SidebarNav */}
             <MainContent>
+              {/* Sidebar Navigation (LudoAI style) */}
+              <SidebarNav />
+
               {/* Left Sidebar - Feature Controls */}
               <LeftSidebar 
                 isCollapsed={ui.sidebar.leftCollapsed}

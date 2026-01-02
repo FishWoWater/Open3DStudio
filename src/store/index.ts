@@ -260,7 +260,7 @@ interface StoreState extends AppState {
   loadSavedAuth: () => void;
   
   // Game Studio actions
-  createGameProject: (genre: GameGenre, name: string) => string;
+  createGameProject: (genre: GameGenre, name: string, gameType?: '2d' | '3d', template?: string) => string;
   updateGameProject: (projectId: string, updates: Partial<GameProject>) => void;
   deleteGameProject: (projectId: string) => void;
   setCurrentGameProject: (projectId: string | null) => void;
@@ -1470,7 +1470,7 @@ export const useStore = create<StoreState>()(
     },
 
     // Game Studio actions
-    createGameProject: (genre: GameGenre, name: string) => {
+    createGameProject: (genre: GameGenre, name: string, gameType: '2d' | '3d' = '3d', template?: string) => {
       const projectId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const defaultGameConfig: GameConfig = {
@@ -1508,13 +1508,15 @@ export const useStore = create<StoreState>()(
         name,
         description: '',
         genre,
+        gameType,
+        template,
         status: 'ideation',
         createdAt: new Date(),
         updatedAt: new Date(),
         conversation: [{
           id: `msg_${Date.now()}`,
           role: 'assistant',
-          content: `Welcome to Game Studio! 🎮 I'm here to help you create an amazing ${genre} game called "${name}".\n\nLet's start by discussing your vision:\n- What's the main goal of your game?\n- What makes it unique or fun?\n- Do you have any reference games in mind?\n\nTell me about your game idea and I'll help bring it to life!`,
+          content: `Welcome to Game Studio! 🎮 I'm here to help you create an amazing ${gameType?.toUpperCase()} ${genre} game called "${name}".\n\nLet's start by discussing your vision:\n- What's the main goal of your game?\n- What makes it unique or fun?\n- Do you have any reference games in mind?\n\nTell me about your game idea and I'll help bring it to life!`,
           timestamp: new Date()
         }],
         gameConfig: defaultGameConfig,

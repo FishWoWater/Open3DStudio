@@ -50,11 +50,15 @@ export interface FeatureConfig {
 }
 
 // Game Studio Types
+export type GameType = '2d' | '3d';
+
 export interface GameProject {
   id: string;
   name: string;
   description: string;
   genre: GameGenre;
+  gameType: GameType;
+  template?: string;
   status: 'ideation' | 'designing' | 'building' | 'testing' | 'deployed';
   createdAt: Date;
   updatedAt: Date;

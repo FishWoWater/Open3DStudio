@@ -9,6 +9,7 @@ import PartCompletionPanel from '../features/PartCompletionPanel';
 import AutoRiggingPanel from '../features/AutoRiggingPanel';
 import MeshRetopologyPanel from '../features/MeshRetopologyPanel';
 import MeshUVUnwrappingPanel from '../features/MeshUVUnwrappingPanel';
+import PromptToGamePanel from '../features/PromptToGamePanel';
 
 const SidebarContainer = styled.aside<{ isCollapsed: boolean; width: number }>`
   width: ${props => props.isCollapsed ? '0' : `${props.width}px`};
@@ -66,6 +67,7 @@ interface LeftSidebarProps {
 
 const moduleNames: Record<string, string> = {
   'game-studio': 'Game Studio',
+  'playable-generator': 'Prompt-to-Game',
   'mesh-generation': 'Mesh Generation',
   'mesh-painting': 'Mesh Painting',
   'mesh-segmentation': 'Mesh Segmentation',
@@ -83,6 +85,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isCollapsed, width }) => {
     switch (currentModule) {
       case 'game-studio':
         return <GameStudioPanel />;
+      case 'playable-generator':
+        return <PromptToGamePanel />;
       case 'mesh-generation':
         return <MeshGenerationPanel />;
       case 'mesh-painting':
