@@ -5,7 +5,9 @@ import { getApiClient } from '../../api/client';
 import ImagePreview from '../ui/ImagePreview';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
 import Select, { SelectOption } from '../ui/Select';
+import AdvancedParameters from '../ui/AdvancedParameters';
 import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshPaintingRequest } from '../../types/api';
 import { cleanModelName } from '../../utils/modelNames';
@@ -228,11 +230,15 @@ const MeshPaintingPanel: React.FC = () => {
     outputFormat: 'glb',
     modelPreference: undefined
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [imageDragOver, setImageDragOver] = useState(false);
   const [isPainting, setIsPainting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
   
   // Use refs to store uploaded file IDs persistently across renders
   const uploadedImageIdRef = React.useRef<string | null>(null);
@@ -484,7 +490,8 @@ const MeshPaintingPanel: React.FC = () => {
           mesh_file_id: meshFileId,
           texture_resolution: formData.textureResolution,
           output_format: formData.outputFormat,
-          model_preference: formData.modelPreference
+          model_preference: formData.modelPreference,
+          ...advancedParams // Include model-specific parameters
         };
 
         console.log("sending mesh painting request", request);
@@ -520,7 +527,8 @@ const MeshPaintingPanel: React.FC = () => {
           mesh_file_id: meshFileId,
           texture_resolution: formData.textureResolution,
           output_format: formData.outputFormat,
-          model_preference: formData.modelPreference
+          model_preference: formData.modelPreference,
+          ...advancedParams // Include model-specific parameters
         };
 
         response = await apiClient.imageMeshPainting(request);
@@ -721,6 +729,14 @@ const MeshPaintingPanel: React.FC = () => {
             placeholder="Select model"
           />
         </FormSection>
+      )}
+
+      {!featuresLoading && currentFeatureAvailable && formData.modelPreference && modelParameters && (
+        <AdvancedParameters
+          parameters={modelParameters.schema.parameters}
+          values={advancedParams}
+          onChange={setAdvancedParams}
+        />
       )}
 
       <FormSection>

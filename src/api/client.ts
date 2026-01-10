@@ -31,7 +31,10 @@ import {
   AuthStatus,
   RegisterRequest,
   LoginRequest,
-  AuthResponse
+  AuthResponse,
+  ModelParametersResponse,
+  TextMeshEditingRequest,
+  ImageMeshEditingRequest
 } from '../types/api';
 
 class ApiClient {
@@ -488,6 +491,31 @@ class ApiClient {
   async getMeshUVUnwrappingSupportedFormats(): Promise<SupportedFormats> {
     const response = await this.retry(() => 
       this.client.get<SupportedFormats>('/api/v1/mesh-uv-unwrapping/supported-formats')
+    );
+    return response.data;
+  }
+
+  // Model Parameters Endpoints
+  async getModelParameters(modelId: string): Promise<ModelParametersResponse> {
+    const response = await this.retry(() => 
+      this.client.get<ModelParametersResponse>(`/api/v1/system/models/${modelId}/parameters`)
+    );
+    return response.data;
+  }
+
+  // Mesh Editing Endpoints
+  async textMeshEditing(request: TextMeshEditingRequest): Promise<BaseApiResponse> {
+    const response = await this.client.post<BaseApiResponse>(
+      '/api/v1/mesh-editing/text-mesh-editing',
+      request
+    );
+    return response.data;
+  }
+
+  async imageMeshEditing(request: ImageMeshEditingRequest): Promise<BaseApiResponse> {
+    const response = await this.client.post<BaseApiResponse>(
+      '/api/v1/mesh-editing/image-mesh-editing',
+      request
     );
     return response.data;
   }

@@ -274,6 +274,54 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
   }
 `;
 
+const DropdownContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const DropdownMenu = styled.div<{ isOpen: boolean }>`
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  background: ${props => props.theme.colors.background.secondary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+  box-shadow: ${props => props.theme.shadows.lg};
+  z-index: 1000;
+  min-width: 140px;
+  display: ${props => props.isOpen ? 'block' : 'none'};
+`;
+
+const DropdownItem = styled.button`
+  width: 100%;
+  background: none;
+  border: none;
+  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  cursor: pointer;
+  text-align: left;
+  transition: all ${props => props.theme.transitions.fast};
+  
+  &:hover {
+    background: ${props => props.theme.colors.background.tertiary};
+  }
+  
+  &:first-child {
+    border-radius: ${props => props.theme.borderRadius.md} ${props => props.theme.borderRadius.md} 0 0;
+  }
+  
+  &:last-child {
+    border-radius: 0 0 ${props => props.theme.borderRadius.md} ${props => props.theme.borderRadius.md};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 const ErrorMessage = styled.div`
   background: ${props => props.theme.colors.error}20;
   color: ${props => props.theme.colors.error};
@@ -349,6 +397,7 @@ interface TaskItemProps {
   onViewInViewport?: (taskId: string) => void;
   onImportToScene?: (taskId: string) => void;
   onUseAsInput?: (taskId: string) => void;
+  onMeshEditing?: (taskId: string) => void;
   isImporting?: boolean;
   importProgress?: number;
 }
@@ -362,12 +411,15 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onViewInViewport,
   onImportToScene,
   onUseAsInput,
+  onMeshEditing,
   isImporting = false,
   importProgress = 0
 }) => {
   const [promptExpanded, setPromptExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const settings = useSettings();
 
   // Intersection Observer to detect visibility
@@ -401,6 +453,23 @@ const TaskItem: React.FC<TaskItemProps> = ({
       }
     };
   }, []);
+
+  // Handle click outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   const getFullPreviewImageUrl = (url?: string) => {
     return getFullApiUrl(url, settings.apiEndpoint);
@@ -605,6 +674,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
       {/* Action Buttons */}
       <ActionButtons>
+        {/* Primary action: Import */}
         {task.status === 'completed' && onImportToScene && (
           <ActionButton 
             variant="primary" 
@@ -617,40 +687,56 @@ const TaskItem: React.FC<TaskItemProps> = ({
           </ActionButton>
         )}
         
-        {task.status === 'completed' && onUseAsInput && task.result?.downloadUrl && (
-          <ActionButton 
-            onClick={(e) => {
-              e.stopPropagation();
-              onUseAsInput(task.id);
-            }}
-          >
-            Reuse
-          </ActionButton>
+        {/* Secondary actions dropdown: More */}
+        {task.status === 'completed' && task.result?.downloadUrl && (
+          <DropdownContainer ref={dropdownRef}>
+            <ActionButton 
+              onClick={(e) => {
+                e.stopPropagation();
+                setDropdownOpen(!dropdownOpen);
+              }}
+            >
+              ⋮ More
+            </ActionButton>
+            <DropdownMenu isOpen={dropdownOpen}>
+              {onMeshEditing && (
+                <DropdownItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(false);
+                    onMeshEditing(task.id);
+                  }}
+                >
+                  Mesh Editing
+                </DropdownItem>
+              )}
+              {onUseAsInput && (
+                <DropdownItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(false);
+                    onUseAsInput(task.id);
+                  }}
+                >
+                  Reuse
+                </DropdownItem>
+              )}
+              {onDownload && (
+                <DropdownItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(false);
+                    onDownload(task.id);
+                  }}
+                >
+                  Download
+                </DropdownItem>
+              )}
+            </DropdownMenu>
+          </DropdownContainer>
         )}
         
-        {task.status === 'completed' && onDownload && task.result?.downloadUrl && (
-          <ActionButton 
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload(task.id);
-            }}
-          >
-            Download
-          </ActionButton>
-        )}
-        
-        {/* {task.status === 'failed' && (
-          <ActionButton 
-            variant="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRetry(task.id);
-            }}
-          >
-            Retry
-          </ActionButton>
-        )} */}
-        
+        {/* Danger action: Delete */}
         <ActionButton 
           variant="danger"
           onClick={(e) => {

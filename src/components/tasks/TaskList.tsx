@@ -23,6 +23,7 @@ interface TaskListProps {
   onTaskClick: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskRetry: (taskId: string) => void;
+  onMeshEditing?: (taskId: string) => void;
   onClearCompleted: () => void;
 }
 
@@ -30,7 +31,8 @@ const TaskList: React.FC<TaskListProps> = ({
   tasks, 
   onTaskClick, 
   onTaskDelete, 
-  onTaskRetry, 
+  onTaskRetry,
+  onMeshEditing,
   onClearCompleted 
 }) => {
   const { addModel } = require('../../store').useStoreActions();
@@ -276,6 +278,7 @@ const TaskList: React.FC<TaskListProps> = ({
           importProgress={importingTaskId === task.id ? importProgress : 0}
           onImportToScene={handleImportToScene}
           onUseAsInput={handleUseAsInput}
+          onMeshEditing={onMeshEditing}
         />
       ))}
     </TaskListContainer>

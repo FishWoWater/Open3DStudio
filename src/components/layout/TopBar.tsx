@@ -148,7 +148,7 @@ const modules: { id: ModuleType; name: string; icon: string }[] = [
   { id: 'mesh-uv-unwrapping', name: 'UV Unwrap', icon: 'fas fa-map' },
   { id: 'mesh-painting', name: 'TextureGen', icon: 'fas fa-paint-brush' },
   { id: 'mesh-segmentation', name: 'Mesh Segmentation', icon: 'fas fa-cut' },
-  { id: 'part-completion', name: 'Part Completion', icon: 'fas fa-puzzle-piece' },
+  // { id: 'part-completion', name: 'Part Completion', icon: 'fas fa-puzzle-piece' },
   { id: 'auto-rigging', name: 'Auto Rig', icon: 'fas fa-sitemap' },
 ];
 

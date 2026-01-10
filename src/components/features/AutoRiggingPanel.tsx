@@ -4,6 +4,8 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import AdvancedParameters from '../ui/AdvancedParameters';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, AutoRiggingRequest } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -169,6 +171,7 @@ const AutoRiggingPanel: React.FC = () => {
     outputFormat: 'fbx',
     modelPreference: 'unirig_auto_rig'
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isRigging, setIsRigging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +179,9 @@ const AutoRiggingPanel: React.FC = () => {
   
   // Use refs to store uploaded file IDs persistently across renders
   const uploadedMeshIdRef = React.useRef<string | null>(null);
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
   const currentMeshFileRef = React.useRef<File | null>(null);
 
   // Handle task result as input
@@ -325,7 +331,8 @@ const AutoRiggingPanel: React.FC = () => {
         mesh_file_id: meshFileId,
         rig_mode: formData.rigMode,
         output_format: formData.outputFormat,
-        model_preference: formData.modelPreference
+        model_preference: formData.modelPreference,
+        ...advancedParams // Include model-specific parameters
       };
 
       // Start rigging job
@@ -455,6 +462,14 @@ const AutoRiggingPanel: React.FC = () => {
           placeholder="Select model preference"
         />
       </FormSection>
+
+      {formData.modelPreference && modelParameters && (
+        <AdvancedParameters
+          parameters={modelParameters.schema.parameters}
+          values={advancedParams}
+          onChange={setAdvancedParams}
+        />
+      )}
 
       <FormSection>
         <RigButton

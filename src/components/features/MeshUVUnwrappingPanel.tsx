@@ -4,6 +4,8 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import AdvancedParameters from '../ui/AdvancedParameters';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshUVUnwrappingRequest, UVUnwrappingAvailableModels, UVPackMethods } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -276,6 +278,7 @@ const MeshUVUnwrappingPanel: React.FC = () => {
     saveVisuals: false,
     modelPreference: ''
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -285,6 +288,9 @@ const MeshUVUnwrappingPanel: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   
   // Use refs to store uploaded file IDs persistently across renders
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
   const uploadedMeshIdRef = React.useRef<string | null>(null);
   const currentMeshFileRef = React.useRef<File | null>(null);
 
@@ -492,7 +498,8 @@ const MeshUVUnwrappingPanel: React.FC = () => {
         pack_method: formData.packMethod,
         save_individual_parts: formData.saveIndividualParts,
         save_visuals: formData.saveVisuals,
-        model_preference: formData.modelPreference
+        model_preference: formData.modelPreference,
+        ...advancedParams // Include model-specific parameters
       };
 
       console.log('[DEBUG] Mesh UV unwrapping request:', request);
@@ -622,6 +629,14 @@ const MeshUVUnwrappingPanel: React.FC = () => {
               </InfoBox>
             )}
           </FormSection>
+
+          {formData.modelPreference && modelParameters && (
+            <AdvancedParameters
+              parameters={modelParameters.schema.parameters}
+              values={advancedParams}
+              onChange={setAdvancedParams}
+            />
+          )}
 
           <FormSection>
             <Label>UV Parameters</Label>

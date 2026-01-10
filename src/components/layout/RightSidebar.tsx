@@ -91,7 +91,7 @@ interface RightSidebarProps {
 
 const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
   const tasks = useTasks();
-  const { clearFailedTasks, clearAllTasks, removeTask, updateTask } = useStoreActions();
+  const { clearFailedTasks, clearAllTasks, removeTask, updateTask, openModal } = useStoreActions();
 
   const handleTaskClick = (task: any) => {
     // Handle task click - maybe show details or load result
@@ -104,6 +104,13 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
 
   const handleTaskRetry = (taskId: string) => {
     updateTask(taskId, { status: 'queued' });
+  };
+
+  const handleMeshEditing = (taskId: string) => {
+    const task = tasks.tasks.find(t => t.id === taskId);
+    if (task) {
+      openModal('mesh-editing', { task });
+    }
   };
 
   const handleClearFailed = () => {
@@ -148,6 +155,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
           onTaskClick={handleTaskClick}
           onTaskDelete={handleTaskDelete}
           onTaskRetry={handleTaskRetry}
+          onMeshEditing={handleMeshEditing}
           onClearCompleted={handleClearFailed}
         />
       </SidebarContent>

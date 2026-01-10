@@ -457,6 +457,79 @@ export interface UserInfo {
   role: string;
 }
 
+// Model Parameters Types
+export interface ParameterSchema {
+  type: 'integer' | 'number' | 'boolean' | 'string';
+  description: string;
+  default: any;
+  minimum?: number;
+  maximum?: number;
+  enum?: any[];
+  required: boolean;
+}
+
+export interface ModelParametersResponse {
+  model_id: string;
+  feature_type: string;
+  vram_requirement: number;
+  schema: {
+    parameters: Record<string, ParameterSchema>;
+  };
+  timestamp: string;
+}
+
+// Mesh Editing Types
+export interface TextMeshEditingRequest {
+  mesh_path?: string;
+  mesh_base64?: string;
+  mesh_file_id?: string;
+  mask_bbox?: {
+    center: [number, number, number];
+    dimensions: [number, number, number];
+  };
+  mask_ellipsoid?: {
+    center: [number, number, number];
+    radii: [number, number, number];
+  };
+  source_prompt: string;
+  target_prompt: string;
+  num_views?: number;
+  resolution?: number;
+  output_format: OutputFormat;
+  model_preference?: string;
+  // Model-specific parameters can be added dynamically
+  [key: string]: any;
+}
+
+export interface ImageMeshEditingRequest {
+  mesh_path?: string;
+  mesh_base64?: string;
+  mesh_file_id?: string;
+  source_image_path?: string;
+  source_image_base64?: string;
+  source_image_file_id?: string;
+  target_image_path?: string;
+  target_image_base64?: string;
+  target_image_file_id?: string;
+  mask_image_path?: string;
+  mask_image_base64?: string;
+  mask_image_file_id?: string;
+  mask_bbox?: {
+    center: [number, number, number];
+    dimensions: [number, number, number];
+  };
+  mask_ellipsoid?: {
+    center: [number, number, number];
+    radii: [number, number, number];
+  };
+  num_views?: number;
+  resolution?: number;
+  output_format: OutputFormat;
+  model_preference?: string;
+  // Model-specific parameters can be added dynamically
+  [key: string]: any;
+}
+
 // Error Types
 export interface ApiError extends Error {
   code?: string;

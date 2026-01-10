@@ -240,6 +240,7 @@ export type ModalType =
   | 'file-upload'
   | 'model-viewer'
   | 'uv-viewer'
+  | 'mesh-editing'
   | 'about'
   | 'error';
 

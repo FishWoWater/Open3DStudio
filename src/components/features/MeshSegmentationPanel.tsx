@@ -4,6 +4,8 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import AdvancedParameters from '../ui/AdvancedParameters';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshSegmentationRequest } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -173,6 +175,7 @@ const MeshSegmentationPanel: React.FC = () => {
     outputFormat: 'glb',
     modelPreference: 'partfield_mesh_segmentation'
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isSegmenting, setIsSegmenting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +183,9 @@ const MeshSegmentationPanel: React.FC = () => {
   
   // Use refs to store uploaded file IDs persistently across renders
   const uploadedMeshIdRef = React.useRef<string | null>(null);
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
   const currentMeshFileRef = React.useRef<File | null>(null);
 
   // Handle task result as input
@@ -324,7 +330,8 @@ const MeshSegmentationPanel: React.FC = () => {
         mesh_file_id: meshFileId,
         num_parts: formData.numParts,
         output_format: formData.outputFormat,
-        model_preference: formData.modelPreference
+        model_preference: formData.modelPreference,
+        ...advancedParams // Include model-specific parameters
       };
 
       // Start segmentation job
@@ -454,6 +461,14 @@ const MeshSegmentationPanel: React.FC = () => {
           placeholder="Select model preference"
         />
       </FormSection>
+
+      {formData.modelPreference && modelParameters && (
+        <AdvancedParameters
+          parameters={modelParameters.schema.parameters}
+          values={advancedParams}
+          onChange={setAdvancedParams}
+        />
+      )}
 
       <FormSection>
         <SegmentButton

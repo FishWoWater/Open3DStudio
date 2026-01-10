@@ -157,6 +157,45 @@ All API responses follow a consistent format:
 }
 ```
 
+### Get Model Parameters
+- **URL**: `/api/v1/system/models/{model_id}/parameters`
+- **Method**: `GET`
+- **Description**: Get parameter schema for a specific model
+- **Authentication**: Required
+- **Path Parameters**:
+  - `model_id`: The model identifier (e.g., "trellis2_image_to_textured_mesh")
+- **Response**:
+```json
+{
+  "model_id": "trellis2_image_to_textured_mesh",
+  "feature_type": "image_to_textured_mesh",
+  "vram_requirement": 8192,
+  "schema": {
+    "parameters": {
+      "slat_sampler_params": {
+        "type": "object",
+        "description": "SLAT sampler parameters",
+        "properties": {
+          "num_sample_steps": {"type": "integer", "default": 12},
+          "cfg_strength": {"type": "number", "default": 3.0}
+        }
+      },
+      "mesh_simplify": {
+        "type": "number",
+        "description": "Simplification ratio",
+        "default": 0.95
+      },
+      "texture_size": {
+        "type": "integer",
+        "description": "Texture resolution",
+        "default": 1024
+      }
+    }
+  },
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
 ### Get Job Status
 - **URL**: `/api/v1/system/jobs/{job_id}`
 - **Method**: `GET`
@@ -756,35 +795,6 @@ curl -X GET "http://localhost:7842/api/v1/system/jobs/{job_id}" \
 }
 ```
 
-### Part Completion
-- **URL**: `/api/v1/mesh-generation/part-completion`
-- **Method**: `POST`
-- **Description**: Complete missing parts of a 3D mesh
-- **Authentication**: Required if user_auth_enabled is true
-- **Request Body**:
-```json
-{
-  "mesh_path": "/path/to/incomplete_mesh.glb",
-  "mesh_base64": null,
-  "mesh_file_id": null,
-  "output_format": "glb",
-  "model_preference": "holopart_part_completion"
-}
-```
-- **File Input Options**: Provide **one** of the following:
-  - `mesh_path`: Local file path (for server-side files)
-  - `mesh_base64`: Base64 encoded mesh data
-  - `mesh_file_id`: File ID from upload endpoint (**recommended**)
-- **Response**:
-```json
-{
-  "job_id": "job_123456",
-  "status": "queued",
-  "message": "Part completion job queued successfully"
-}
-```
-
-
 ### Get Mesh Generation Supported Formats
 - **URL**: `/api/v1/mesh-generation/supported-formats`
 - **Method**: `GET`
@@ -921,6 +931,144 @@ curl -X GET "http://localhost:7842/api/v1/system/jobs/{job_id}" \
 {
   "input_formats": ["obj", "glb", "fbx"],
   "output_formats": ["fbx", "glb"]
+}
+```
+
+---
+
+## Mesh Editing Endpoints
+
+### Text-Guided Mesh Editing
+- **URL**: `/api/v1/mesh-editing/text-mesh-editing`
+- **Method**: `POST`
+- **Description**: Edit a 3D mesh using text guidance (powered by VoxHammer)
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "mesh_path": "/path/to/mesh.glb",
+  "mesh_base64": null,
+  "mesh_file_id": null,
+  "mask_bbox": {
+    "center": [0.0, 0.0, 0.0],
+    "dimensions": [1.0, 1.0, 1.0]
+  },
+  "mask_ellipsoid": null,
+  "source_prompt": "a wooden chair",
+  "target_prompt": "a metal chair",
+  "num_views": 150,
+  "resolution": 512,
+  "output_format": "glb",
+  "model_preference": "voxhammer_text_mesh_editing"
+}
+```
+- **File Input Options**: Provide **one** of the following:
+  - `mesh_path`: Local file path (for server-side files)
+  - `mesh_base64`: Base64 encoded mesh data
+  - `mesh_file_id`: File ID from upload endpoint (**recommended**)
+- **Mask Options**: Provide **one** of the following:
+  - `mask_bbox`: Bounding box mask with `center` [x, y, z] and `dimensions` [width, height, depth]
+  - `mask_ellipsoid`: Ellipsoid mask with `center` [x, y, z] and `radii` [rx, ry, rz]
+- **Parameters**:
+  - `source_prompt`: Text describing the original mesh region
+  - `target_prompt`: Text describing the desired edited mesh region
+  - `num_views`: Number of rendering views (50-300, default: 150)
+  - `resolution`: Rendering resolution (256-1024, default: 512)
+  - `output_format`: Output mesh format (currently only "glb" supported)
+  - `model_preference`: Model name for editing
+- **Response**:
+```json
+{
+  "job_id": "job_123456",
+  "status": "queued",
+  "message": "Text-guided mesh editing job queued successfully"
+}
+```
+
+### Image-Guided Mesh Editing
+- **URL**: `/api/v1/mesh-editing/image-mesh-editing`
+- **Method**: `POST`
+- **Description**: Edit a 3D mesh using image guidance (powered by VoxHammer)
+- **Authentication**: Required if user_auth_enabled is true
+- **Request Body**:
+```json
+{
+  "mesh_path": "/path/to/mesh.glb",
+  "mesh_base64": null,
+  "mesh_file_id": null,
+  "source_image_path": "/path/to/source.jpg",
+  "source_image_base64": null,
+  "source_image_file_id": null,
+  "target_image_path": "/path/to/target.jpg",
+  "target_image_base64": null,
+  "target_image_file_id": null,
+  "mask_image_path": "/path/to/mask.jpg",
+  "mask_image_base64": null,
+  "mask_image_file_id": null,
+  "mask_bbox": {
+    "center": [0.0, 0.0, 0.0],
+    "dimensions": [1.0, 1.0, 1.0]
+  },
+  "mask_ellipsoid": null,
+  "num_views": 150,
+  "resolution": 512,
+  "output_format": "glb",
+  "model_preference": "voxhammer_image_mesh_editing"
+}
+```
+- **File Input Options**: For mesh, source image, target image, and mask image, provide **one** of:
+  - `*_path`: Local file path (for server-side files)
+  - `*_base64`: Base64 encoded data
+  - `*_file_id`: File ID from upload endpoint (**recommended**)
+- **Mask Options**: 
+  - **2D Mask Image**: Provide one of `mask_image_path`, `mask_image_base64`, or `mask_image_file_id`
+  - **3D Mask**: Provide one of `mask_bbox` or `mask_ellipsoid`
+- **Parameters**:
+  - `source_image_*`: Reference image showing the original appearance
+  - `target_image_*`: Reference image showing the desired appearance
+  - `mask_image_*`: 2D mask image indicating the region to edit
+  - `num_views`: Number of rendering views (50-300, default: 150)
+  - `resolution`: Rendering resolution (256-1024, default: 512)
+  - `output_format`: Output mesh format (currently only "glb" supported)
+  - `model_preference`: Model name for editing
+- **Response**:
+```json
+{
+  "job_id": "job_123456",
+  "status": "queued",
+  "message": "Image-guided mesh editing job queued successfully"
+}
+```
+
+### Get Supported Masks
+- **URL**: `/api/v1/mesh-editing/supported-masks`
+- **Method**: `GET`
+- **Description**: Get list of supported mask types and their parameters
+- **Authentication**: None required
+- **Response**:
+```json
+{
+  "mask_types": {
+    "bbox": {
+      "name": "Bounding Box",
+      "parameters": {
+        "center": "[x, y, z] - Center point of the box",
+        "dimensions": "[width, height, depth] - Size of the box"
+      }
+    },
+    "ellipsoid": {
+      "name": "Ellipsoid",
+      "parameters": {
+        "center": "[x, y, z] - Center point of the ellipsoid",
+        "radii": "[rx, ry, rz] - Radii in each dimension"
+      }
+    }
+  },
+  "constraints": {
+    "center_range": "[-10.0, 10.0] (typical mesh space)",
+    "dimension_range": "[0.1, 5.0] (positive values)",
+    "radii_range": "[0.1, 5.0] (positive values)"
+  }
 }
 ```
 
@@ -1301,7 +1449,79 @@ curl "http://localhost:7842/api/v1/system/jobs/{job_id}/download" \
   -o "rigged_character.fbx"
 ```
 
-### Example 6: Using Python with Requests
+### Example 6: Text-Guided Mesh Editing with File Upload
+```bash
+# 1. Upload mesh file
+curl -X POST "http://localhost:7842/api/v1/file-upload/mesh" \
+  -F "file=@/path/to/chair.glb"
+
+# Response: {"file_id": "mesh_abc123", ...}
+
+# 2. Edit mesh using text guidance
+curl -X POST "http://localhost:7842/api/v1/mesh-editing/text-mesh-editing" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mesh_file_id": "mesh_abc123",
+    "mask_bbox": {
+      "center": [0.0, 0.5, 0.0],
+      "dimensions": [0.8, 0.8, 0.8]
+    },
+    "source_prompt": "wooden chair seat",
+    "target_prompt": "leather cushion seat",
+    "num_views": 150,
+    "resolution": 512,
+    "output_format": "glb",
+    "model_preference": "voxhammer_text_mesh_editing"
+  }'
+
+# 3. Download edited mesh
+curl "http://localhost:7842/api/v1/system/jobs/{job_id}/download" \
+  -o "edited_chair.glb"
+```
+
+### Example 7: Image-Guided Mesh Editing
+```bash
+# 1. Upload mesh and images
+curl -X POST "http://localhost:7842/api/v1/file-upload/mesh" \
+  -F "file=@/path/to/mesh.glb"
+# Response: {"file_id": "mesh_xyz", ...}
+
+curl -X POST "http://localhost:7842/api/v1/file-upload/image" \
+  -F "file=@/path/to/source.jpg"
+# Response: {"file_id": "src_img", ...}
+
+curl -X POST "http://localhost:7842/api/v1/file-upload/image" \
+  -F "file=@/path/to/target.jpg"
+# Response: {"file_id": "tgt_img", ...}
+
+curl -X POST "http://localhost:7842/api/v1/file-upload/image" \
+  -F "file=@/path/to/mask.jpg"
+# Response: {"file_id": "mask_img", ...}
+
+# 2. Edit mesh using image guidance
+curl -X POST "http://localhost:7842/api/v1/mesh-editing/image-mesh-editing" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mesh_file_id": "mesh_xyz",
+    "source_image_file_id": "src_img",
+    "target_image_file_id": "tgt_img",
+    "mask_image_file_id": "mask_img",
+    "mask_ellipsoid": {
+      "center": [0.0, 0.0, 0.0],
+      "radii": [0.5, 0.5, 0.5]
+    },
+    "num_views": 150,
+    "resolution": 512,
+    "output_format": "glb",
+    "model_preference": "voxhammer_image_mesh_editing"
+  }'
+
+# 3. Download edited mesh
+curl "http://localhost:7842/api/v1/system/jobs/{job_id}/download" \
+  -o "edited_mesh.glb"
+```
+
+### Example 8: Using Python with Requests
 ```python
 import requests
 
@@ -1361,7 +1581,7 @@ if job_status['status'] == 'completed':
     print(f"Thumbnail base64: {thumbnail_base64['base64_data'][:50]}...")
 ```
 
-### Example 7: Query Historical Jobs
+### Example 9: Query Historical Jobs
 ```bash
 # Get recent jobs with pagination
 curl "http://localhost:7842/api/v1/system/jobs/history?limit=50&offset=0"
@@ -1450,7 +1670,6 @@ curl "http://localhost:7842/api/v1/system/jobs/history?start_date=2024-01-01T00:
 | Image to Raw Mesh | `trellis_image_to_raw_mesh` | TRELLIS model for image-to-mesh |
 | Image to Textured Mesh | `trellis_image_to_textured_mesh` | TRELLIS model for textured mesh |
 | Image Mesh Painting | `trellis_image_mesh_painting` | TRELLIS model for mesh painting |
-| Part Completion | `holopart_part_completion` | HoloPart model for part completion |
 | Mesh Segmentation | `partfield_mesh_segmentation` | PartField model for segmentation |
 | Auto Rigging | `unirig_auto_rig` | UniRig model for auto-rigging |
 
@@ -1493,5 +1712,5 @@ curl "http://localhost:7842/api/v1/system/jobs/history?start_date=2024-01-01T00:
 - Ensure adequate VRAM is available for model operations
 
 
-*Last updated: [2025.07.12]*
-*API Version: 1.0.0* 
+*Last updated: [2026.01.10]*
+*API Version: 2.0.0* 

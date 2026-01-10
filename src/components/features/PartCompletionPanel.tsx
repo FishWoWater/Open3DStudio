@@ -4,6 +4,8 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import AdvancedParameters from '../ui/AdvancedParameters';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, PartCompletionRequest } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -128,6 +130,7 @@ const PartCompletionPanel: React.FC = () => {
     outputFormat: 'glb',
     modelPreference: 'holopart_part_completion'
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isCompleting, setIsCompleting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +139,9 @@ const PartCompletionPanel: React.FC = () => {
   // Use refs to store uploaded file IDs persistently across renders
   const uploadedMeshIdRef = React.useRef<string | null>(null);
   const currentMeshFileRef = React.useRef<File | null>(null);
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
 
   // Handle task result as input
   useEffect(() => {
@@ -274,7 +280,8 @@ const PartCompletionPanel: React.FC = () => {
       const request: PartCompletionRequest = {
         mesh_file_id: meshFileId,
         output_format: formData.outputFormat,
-        model_preference: formData.modelPreference
+        model_preference: formData.modelPreference,
+        ...advancedParams // Include model-specific parameters
       };
 
       // Start completion job
@@ -392,6 +399,14 @@ const PartCompletionPanel: React.FC = () => {
           The AI will analyze the mesh and automatically detect and complete missing parts.
         </InfoBox>
       </FormSection>
+
+      {formData.modelPreference && modelParameters && (
+        <AdvancedParameters
+          parameters={modelParameters.schema.parameters}
+          values={advancedParams}
+          onChange={setAdvancedParams}
+        />
+      )}
 
       <FormSection>
         <CompleteButton

@@ -4,7 +4,9 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import ImagePreview from '../ui/ImagePreview';
 import Select, { SelectOption } from '../ui/Select';
+import AdvancedParameters from '../ui/AdvancedParameters';
 import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, TextToMeshRequest, TextToTexturedMeshRequest, ImageToMeshRequest, ImageToTexturedMeshRequest } from '../../types/api';
 import { cleanModelName, isPartPackerAvailable } from '../../utils/modelNames';
@@ -248,6 +250,10 @@ interface FormData {
   modelPreference?: string;
 }
 
+interface AdvancedParams {
+  [key: string]: any;
+}
+
 // Select options
 const outputFormatOptions: SelectOption[] = [
   { value: 'glb', label: 'GLB' },
@@ -277,6 +283,7 @@ const MeshGenerationPanel: React.FC = () => {
     enableTexture: true,
     modelPreference: '' // Will be set based on available models
   });
+  const [advancedParams, setAdvancedParams] = useState<AdvancedParams>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -285,6 +292,9 @@ const MeshGenerationPanel: React.FC = () => {
   // Use ref to store uploaded file ID persistently across renders
   const uploadedImageIdRef = React.useRef<string | null>(null);
   const currentImageFileRef = React.useRef<File | null>(null);
+
+  // Fetch model-specific parameters
+  const { parameters: modelParameters, loading: paramsLoading } = useModelParameters(formData.modelPreference);
 
   // Get feature availability status
   const textToMeshAvailable = checkFeature(formData.enableTexture ? 'text-to-textured-mesh' : 'text-to-raw-mesh');
@@ -424,7 +434,8 @@ const MeshGenerationPanel: React.FC = () => {
             texture_prompt: formData.texturePrompt,
             texture_resolution: formData.textureResolution,
             output_format: formData.outputFormat,
-            model_preference: formData.modelPreference || availableModels[0]
+            model_preference: formData.modelPreference || availableModels[0],
+            ...advancedParams // Include model-specific parameters
           };
           console.log('[DEBUG] Text to textured mesh request:', request);
           response = await apiClient.textToTexturedMesh(request);
@@ -434,7 +445,8 @@ const MeshGenerationPanel: React.FC = () => {
           const request: TextToMeshRequest = {
             text_prompt: formData.textPrompt,
             output_format: formData.outputFormat,
-            model_preference: formData.modelPreference || availableModels[0]
+            model_preference: formData.modelPreference || availableModels[0],
+            ...advancedParams // Include model-specific parameters
           };
           console.log('[DEBUG] Text to raw mesh request:', request);
           response = await apiClient.textToRawMesh(request);
@@ -471,7 +483,8 @@ const MeshGenerationPanel: React.FC = () => {
             image_file_id: imageFileId,
             texture_resolution: formData.textureResolution,
             output_format: formData.outputFormat,
-            model_preference: formData.modelPreference || availableModels[0]
+            model_preference: formData.modelPreference || availableModels[0],
+            ...advancedParams // Include model-specific parameters
           };
           console.log('[DEBUG] Image to textured mesh request:', request);
           response = await apiClient.imageToTexturedMesh(request);
@@ -482,7 +495,8 @@ const MeshGenerationPanel: React.FC = () => {
           const request: ImageToMeshRequest = {
             image_file_id: imageFileId,
             output_format: formData.outputFormat,
-            model_preference: formData.modelPreference || availableModels[0]
+            model_preference: formData.modelPreference || availableModels[0],
+            ...advancedParams // Include model-specific parameters
           };
           // console.log('[DEBUG] Image to raw mesh request:', request);
           response = await apiClient.imageToRawMesh(request);
@@ -711,6 +725,14 @@ const MeshGenerationPanel: React.FC = () => {
             placeholder="Select model"
           />
         </FormSection>
+      )}
+
+      {!featuresLoading && currentFeatureAvailable && formData.modelPreference && modelParameters && (
+        <AdvancedParameters
+          parameters={modelParameters.schema.parameters}
+          values={advancedParams}
+          onChange={setAdvancedParams}
+        />
       )}
 
       <FormSection>

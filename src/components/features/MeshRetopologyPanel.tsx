@@ -4,6 +4,8 @@ import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
 import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
+import AdvancedParameters from '../ui/AdvancedParameters';
+import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshRetopologyRequest, RetopologyAvailableModels } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -239,6 +241,7 @@ const MeshRetopologyPanel: React.FC = () => {
     seed: '42',
     modelPreference: ''
   });
+  const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -249,6 +252,9 @@ const MeshRetopologyPanel: React.FC = () => {
   // Use refs to store uploaded file IDs persistently across renders
   const uploadedMeshIdRef = React.useRef<string | null>(null);
   const currentMeshFileRef = React.useRef<File | null>(null);
+  
+  // Fetch model-specific parameters
+  const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
 
   // Handle task result as input
   useEffect(() => {
@@ -445,7 +451,8 @@ const MeshRetopologyPanel: React.FC = () => {
         poly_type: formData.polyType,
         model_preference: formData.modelPreference,
         ...(formData.targetVertexCount && { target_vertex_count: parseInt(formData.targetVertexCount) }),
-        ...(formData.seed && { seed: parseInt(formData.seed) })
+        ...(formData.seed && { seed: parseInt(formData.seed) }),
+        ...advancedParams // Include model-specific parameters
       };
 
       console.log('[DEBUG] Mesh retopology request:', request);
@@ -574,6 +581,14 @@ const MeshRetopologyPanel: React.FC = () => {
               </InfoBox>
             )}
           </FormSection>
+
+          {formData.modelPreference && modelParameters && (
+            <AdvancedParameters
+              parameters={modelParameters.schema.parameters}
+              values={advancedParams}
+              onChange={setAdvancedParams}
+            />
+          )}
 
           <FormSection>
             <Label>Parameters</Label>

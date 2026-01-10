@@ -17,6 +17,7 @@ import NotificationContainer from './components/ui/NotificationContainer';
 import LoadingOverlay from './components/ui/LoadingOverlay';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import UVViewerModal from './components/ui/UVViewerModal';
+import MeshEditingModal from './components/ui/MeshEditingModal';
 import AuthPanel from './components/ui/AuthPanel';
 
 // Global Styles
@@ -351,6 +352,15 @@ const App: React.FC = () => {
             <UVViewerModal
               isOpen={ui.modal.isOpen}
               model={ui.modal.data?.model || null}
+              onClose={closeModal}
+            />
+          )}
+          
+          {/* Mesh Editing Modal */}
+          {ui.modal.type === 'mesh-editing' && ui.modal.data?.task && (
+            <MeshEditingModal
+              isOpen={ui.modal.isOpen}
+              task={ui.modal.data.task}
               onClose={closeModal}
             />
           )}

@@ -1,0 +1,59 @@
+{
+    "model_id": "trellis2_image_to_textured_mesh",
+    "feature_type": "image_to_textured_mesh",
+    "vram_requirement": 12288,
+    "schema": {
+        "parameters": {
+            "decimation_target": {
+                "type": "integer",
+                "description": "Target number of faces after decimation",
+                "default": 1000000,
+                "minimum": 10000,
+                "maximum": 10000000,
+                "required": false
+            },
+            "texture_size": {
+                "type": "integer",
+                "description": "Output texture resolution (width and height)",
+                "default": 4096,
+                "enum": [
+                    1024,
+                    2048,
+                    4096,
+                    8192
+                ],
+                "required": false
+            },
+            "remesh": {
+                "type": "boolean",
+                "description": "Whether to remesh the output mesh",
+                "default": true,
+                "required": false
+            },
+            "remesh_band": {
+                "type": "integer",
+                "description": "Remesh band parameter (controls remeshing behavior)",
+                "default": 1,
+                "minimum": 0,
+                "maximum": 10,
+                "required": false
+            },
+            "remesh_project": {
+                "type": "integer",
+                "description": "Remesh project parameter (controls projection)",
+                "default": 0,
+                "minimum": 0,
+                "maximum": 10,
+                "required": false
+            },
+            "seed": {
+                "type": "integer",
+                "description": "Random seed for reproducibility (None for random)",
+                "default": null,
+                "minimum": 0,
+                "required": false
+            }
+        }
+    },
+    "timestamp": "2026-01-10T06:30:43.272709"
+}
