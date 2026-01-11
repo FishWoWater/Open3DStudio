@@ -2,7 +2,7 @@
 
 [![Apache2.0 License](https://img.shields.io/badge/License-Apache2.0-green.svg)](LICENSE)
 [![Cross-Platform](https://img.shields.io/badge/platform-MacOS%20%7C%20Windows%20%7C%20Web-blue)](#)
-[![Open3DStudio](https://img.shields.io/badge/YouTube-Open3DStudio-red?style=for-the-badge&logo=youtube)](https://youtu.be/LNteOF3XmmI)
+[![Open3DStudio](https://img.shields.io/badge/YouTube-Open3DStudio-red?&logo=youtube)](https://youtu.be/LNteOF3XmmI)
 
 **Open3DStudio** is a cross-platform self-hosted 3D AIGC application. It works closely with the [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) to provide **completely locally deployed** and **free** 3DAIGC workflows. Basically it's an advanced version of the  **[Minimal3DStudio](https://github.com/FishWoWater/Minimal3DStudio)** and much like a **replicate of [TripoStudio](https://studio.tripo3d.ai/home?lng=en)**.
 

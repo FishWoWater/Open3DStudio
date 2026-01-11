@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useStore } from '../../store';
 import { getApiClient } from '../../api/client';
@@ -6,6 +6,8 @@ import Select, { SelectOption } from '../ui/Select';
 import MeshFileUploadWithPreview from '../ui/MeshFileUploadWithPreview';
 import AdvancedParameters from '../ui/AdvancedParameters';
 import { useModelParameters } from '../../hooks/useModelParameters';
+import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
+import { cleanModelName } from '../../utils/modelNames';
 import { TaskType } from '../../types/state';
 import { JobStatus, MeshSegmentationRequest } from '../../types/api';
 import { getFullApiUrl } from '../../utils/url';
@@ -52,10 +54,6 @@ const Label = styled.label`
 const outputFormatOptions: SelectOption[] = [
   { value: 'glb', label: 'GLB' },
   { value: 'json', label: 'JSON (Metadata only)' }
-];
-
-const modelPreferenceOptions: SelectOption[] = [
-  { value: 'partfield_mesh_segmentation', label: 'PartField (Default)' }
 ];
 
 const NumberInput = styled.input`
@@ -161,19 +159,20 @@ const InfoBox = styled.div`
 interface FormData {
   meshFile: File | null;
   uploadedMeshId: string | null;
-  numParts: number;
+  // numParts: number;
   outputFormat: 'glb' | 'json';
   modelPreference?: string;
 }
 
 const MeshSegmentationPanel: React.FC = () => {
   const { addTask, addNotification, ui, clearTaskResultAsInput, tasks, settings } = useStore();
+  const { features, loading: featuresLoading, checkFeature, getModelsForFeature } = useFeatureAvailability();
   const [formData, setFormData] = useState<FormData>({
     meshFile: null,
     uploadedMeshId: null,
-    numParts: 5,
+    // numParts: 5,
     outputFormat: 'glb',
-    modelPreference: 'partfield_mesh_segmentation'
+    modelPreference: undefined
   });
   const [advancedParams, setAdvancedParams] = useState<Record<string, any>>({});
   const [isSegmenting, setIsSegmenting] = useState(false);
@@ -187,6 +186,32 @@ const MeshSegmentationPanel: React.FC = () => {
   // Fetch model-specific parameters
   const { parameters: modelParameters } = useModelParameters(formData.modelPreference);
   const currentMeshFileRef = React.useRef<File | null>(null);
+
+  // Get feature availability status
+  const meshSegmentationAvailable = checkFeature('mesh-segmentation');
+
+  // Get available models for mesh segmentation
+  const availableModels = useMemo(() => {
+    return getModelsForFeature('mesh-segmentation');
+  }, [getModelsForFeature]);
+
+  // Dynamic model preference options
+  const modelPreferenceOptions: SelectOption[] = useMemo(() => {
+    if (availableModels.length === 0) {
+      return [{ value: '', label: 'No models available' }];
+    }
+    return availableModels.map(model => ({
+      value: model,
+      label: cleanModelName(model).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }));
+  }, [availableModels]);
+
+  // Update model preference when available models change
+  React.useEffect(() => {
+    if (availableModels.length > 0 && !formData.modelPreference) {
+      setFormData(prev => ({ ...prev, modelPreference: availableModels[0] }));
+    }
+  }, [availableModels, formData.modelPreference]);
 
   // Handle task result as input
   useEffect(() => {
@@ -284,9 +309,9 @@ const MeshSegmentationPanel: React.FC = () => {
       return 'Mesh file must be smaller than 200MB';
     }
     
-    if (formData.numParts < 2 || formData.numParts > 32) {
-      return 'Number of parts must be between 2 and 32';
-    }
+    // if (formData.numParts < 2 || formData.numParts > 32) {
+    //   return 'Number of parts must be between 2 and 32';
+    // }
     
     return null;
   }, [formData]);
@@ -328,7 +353,7 @@ const MeshSegmentationPanel: React.FC = () => {
       // Create segmentation request
       const request: MeshSegmentationRequest = {
         mesh_file_id: meshFileId,
-        num_parts: formData.numParts,
+        // num_parts: formData.numParts,
         output_format: formData.outputFormat,
         model_preference: formData.modelPreference,
         ...advancedParams // Include model-specific parameters
@@ -348,7 +373,7 @@ const MeshSegmentationPanel: React.FC = () => {
         id: `task-${Date.now()}`,
         jobId: response.job_id,
         type: 'mesh-seg' as TaskType,
-        name: `${formData.meshFile!.name.substring(0, 15)} (${formData.numParts} parts)`,
+        name: `${formData.meshFile!.name.substring(0, 15)}`,
         status: response.status as JobStatus,
         createdAt: new Date(),
         progress: 0,
@@ -360,7 +385,7 @@ const MeshSegmentationPanel: React.FC = () => {
             size: formData.meshFile!.size
           }],
           parameters: {
-            numParts: formData.numParts,
+            // numParts: formData.numParts,
             outputFormat: formData.outputFormat,
             modelPreference: formData.modelPreference
           }
@@ -428,7 +453,7 @@ const MeshSegmentationPanel: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection>
+      {/* <FormSection>
         <Label>Number of Parts</Label>
         <NumberInput
           type="number"
@@ -440,7 +465,7 @@ const MeshSegmentationPanel: React.FC = () => {
         <InfoBox>
           Specify how many parts you want the mesh to be segmented into (2-32).
         </InfoBox>
-      </FormSection>
+      </FormSection> */}
 
       <FormSection>
         <Label>Output Format</Label>
@@ -452,17 +477,19 @@ const MeshSegmentationPanel: React.FC = () => {
         />
       </FormSection>
 
-      <FormSection>
-        <Label>Model Preference (Optional)</Label>
-        <Select
-          options={modelPreferenceOptions}
-          value={formData.modelPreference}
-          onChange={(value) => handleInputChange('modelPreference', value)}
-          placeholder="Select model preference"
-        />
-      </FormSection>
+      {!featuresLoading && meshSegmentationAvailable && availableModels.length > 0 && (
+        <FormSection>
+          <Label>Model Preference (Optional)</Label>
+          <Select
+            options={modelPreferenceOptions}
+            value={formData.modelPreference}
+            onChange={(value) => handleInputChange('modelPreference', value)}
+            placeholder="Select model preference"
+          />
+        </FormSection>
+      )}
 
-      {formData.modelPreference && modelParameters && (
+      {!featuresLoading && meshSegmentationAvailable && formData.modelPreference && modelParameters && (
         <AdvancedParameters
           parameters={modelParameters.schema.parameters}
           values={advancedParams}
@@ -472,10 +499,14 @@ const MeshSegmentationPanel: React.FC = () => {
 
       <FormSection>
         <SegmentButton
-          disabled={isSegmenting || isDownloading}
+          disabled={isSegmenting || isDownloading || !meshSegmentationAvailable || availableModels.length === 0}
           onClick={handleSegment}
         >
-          {isSegmenting ? 'Processing...' : isDownloading ? 'Downloading...' : 'Segment Mesh'}
+          {isSegmenting ? 'Processing...' : 
+           isDownloading ? 'Downloading...' : 
+           !meshSegmentationAvailable ? 'Feature Unavailable' :
+           availableModels.length === 0 ? 'No Models Available' :
+           'Segment Mesh'}
         </SegmentButton>
         
         {isSegmenting && (

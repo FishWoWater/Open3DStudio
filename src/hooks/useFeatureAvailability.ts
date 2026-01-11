@@ -31,7 +31,9 @@ const FEATURE_NAME_MAPPING: Record<string, string> = {
   'image-mesh-painting': 'image_mesh_painting',
   'mesh-segmentation': 'mesh_segmentation',
   'auto-rigging': 'auto_rigging',
-  'part-completion': 'part_completion'
+  'part-completion': 'part_completion', 
+  'text-mesh-editing': 'text_mesh_editing', 
+  'image-mesh-editing': 'image_mesh_editing'
 };
 
 export const useFeatureAvailability = (): UseFeatureAvailabilityReturn => {

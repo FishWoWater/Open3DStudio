@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo, memo } from 'react';
 import * as THREE from 'three';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 
@@ -8,183 +8,197 @@ interface BBoxControlProps {
   onChange: (center: [number, number, number], dimensions: [number, number, number]) => void;
 }
 
-const BBoxControl: React.FC<BBoxControlProps> = ({ center, dimensions, onChange }) => {
-  const { camera, gl, raycaster, pointer } = useThree();
+/**
+ * BBoxControl - Optimized for smooth dragging
+ * 
+ * Key optimization: Uses local state during drag, only calls onChange on drag END.
+ * This prevents parent component re-renders during dragging.
+ */
+const BBoxControl = memo<BBoxControlProps>(({ center, dimensions, onChange }) => {
+  const { gl, controls } = useThree();
+  
+  // Local state for visual updates during drag - this is the KEY optimization
+  // During drag, we update localCenter/localDimensions instead of calling onChange
+  const [localCenter, setLocalCenter] = useState<[number, number, number]>(center);
+  const [localDimensions, setLocalDimensions] = useState<[number, number, number]>(dimensions);
   const [isDragging, setIsDragging] = useState(false);
   const [dragFace, setDragFace] = useState<string | null>(null);
-  const [hoverFace, setHoverFace] = useState<string | null>(null);
   
   const groupRef = useRef<THREE.Group>(null);
-  const planeRef = useRef(new THREE.Plane());
-  const intersectionPoint = useRef(new THREE.Vector3());
-  const startPoint = useRef(new THREE.Vector3());
   const startCenter = useRef<[number, number, number]>([0, 0, 0]);
   const startDimensions = useRef<[number, number, number]>([1, 1, 1]);
+  const pointerRef = useRef(new THREE.Vector2());
+  const onChangeRef = useRef(onChange);
 
-  // Face meshes refs
-  const faceMeshes = useRef<{ [key: string]: THREE.Mesh }>({});
+  // Sync local state with props when not dragging
+  useEffect(() => {
+    if (!isDragging) {
+      setLocalCenter(center);
+      setLocalDimensions(dimensions);
+    }
+  }, [center, dimensions, isDragging]);
 
-  // Create face geometries and materials
-  const createFace = (
-    position: THREE.Vector3,
-    rotation: THREE.Euler,
-    size: [number, number],
-    faceName: string,
-    isHovered: boolean
-  ) => {
-    const geometry = new THREE.PlaneGeometry(size[0], size[1]);
-    const material = new THREE.MeshBasicMaterial({
-      color: isHovered ? 0x4a9eff : 0x888888,
+  // Keep onChange ref up to date
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Memoize materials
+  const materials = useMemo(() => ({
+    normal: new THREE.MeshBasicMaterial({
+      color: 0x888888,
       transparent: true,
-      opacity: isHovered ? 0.5 : 0.2,
+      opacity: 0.2,
       side: THREE.DoubleSide,
       depthTest: false
-    });
-    
-    return (
-      <mesh
-        key={faceName}
-        geometry={geometry}
-        material={material}
-        position={position}
-        rotation={rotation}
-        userData={{ faceName }}
-        ref={(ref: THREE.Mesh | null) => {
-          if (ref) faceMeshes.current[faceName] = ref;
-        }}
-        onPointerDown={(e: ThreeEvent<PointerEvent>) => handlePointerDown(e, faceName)}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerEnter={() => setHoverFace(faceName)}
-        onPointerLeave={() => setHoverFace(null)}
-      />
-    );
-  };
+    }),
+    hover: new THREE.MeshBasicMaterial({
+      color: 0x4a9eff,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide,
+      depthTest: false
+    })
+  }), []);
 
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>, faceName: string) => {
+  // Helper functions
+  const getFaceAxis = useCallback((faceName: string): 'x' | 'y' | 'z' => {
+    if (faceName === 'left' || faceName === 'right') return 'x';
+    if (faceName === 'top' || faceName === 'bottom') return 'y';
+    return 'z';
+  }, []);
+
+  const getFaceDirection = useCallback((faceName: string): number => {
+    if (faceName === 'right' || faceName === 'top' || faceName === 'front') return 1;
+    return -1;
+  }, []);
+
+  const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>, faceName: string) => {
     e.stopPropagation();
+    
+    // Disable OrbitControls
+    if (controls) {
+      (controls as any).enabled = false;
+    }
+    
     setIsDragging(true);
     setDragFace(faceName);
     
-    // Store starting values
-    startCenter.current = [...center];
-    startDimensions.current = [...dimensions];
-    
-    // Calculate the drag plane based on face normal
-    const normal = getFaceNormal(faceName);
-    const facePosition = new THREE.Vector3(...center);
-    
-    // Offset face position based on which face
-    const offset = getFaceOffset(faceName, dimensions);
-    facePosition.add(offset);
-    
-    planeRef.current.setFromNormalAndCoplanarPoint(normal, facePosition);
-    
-    // Get starting intersection point
-    raycaster.setFromCamera(pointer, camera);
-    raycaster.ray.intersectPlane(planeRef.current, startPoint.current);
-  };
+    // Store starting values from LOCAL state (which is synced with props when not dragging)
+    startCenter.current = [...localCenter];
+    startDimensions.current = [...localDimensions];
+    pointerRef.current.set(e.pointer.x, e.pointer.y);
+  }, [controls, localCenter, localDimensions]);
 
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+  // Handle drag with local state updates only - NO onChange calls during drag
+  useEffect(() => {
     if (!isDragging || !dragFace) return;
+
+    const startPointer = new THREE.Vector2(pointerRef.current.x, pointerRef.current.y);
+    let latestCenter: [number, number, number] = [...startCenter.current];
+    let latestDimensions: [number, number, number] = [...startDimensions.current];
     
-    e.stopPropagation();
-    
-    // Calculate intersection with drag plane
-    raycaster.setFromCamera(pointer, camera);
-    if (raycaster.ray.intersectPlane(planeRef.current, intersectionPoint.current)) {
-      // Calculate movement delta
-      const delta = new THREE.Vector3().subVectors(intersectionPoint.current, startPoint.current);
+    const handleMove = (event: PointerEvent) => {
+      // Convert mouse position to normalized device coordinates
+      const rect = gl.domElement.getBoundingClientRect();
+      const currentX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const currentY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       
-      // Apply delta based on face axis
+      // Calculate screen-space delta
+      const deltaX = currentX - startPointer.x;
+      const deltaY = currentY - startPointer.y;
+      
+      // Get face axis and direction
       const axis = getFaceAxis(dragFace);
       const direction = getFaceDirection(dragFace);
       
-      // Project delta onto axis
-      const axisVector = new THREE.Vector3();
-      axisVector[axis] = 1;
-      const movement = delta.dot(axisVector) * direction;
+      // Map screen movement to world space
+      let movement = 0;
+      if (axis === 'x') {
+        movement = deltaX * 1.0;
+      } else if (axis === 'y') {
+        movement = deltaY * 1.0;
+      } else {
+        movement = deltaX * -1.0;
+      }
+      movement *= direction;
       
       // Calculate new dimensions and center
       const newDimensions: [number, number, number] = [...startDimensions.current];
       const newCenter: [number, number, number] = [...startCenter.current];
+      const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
       
-      // Update dimension and center for the dragged face
-      newDimensions[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] = Math.max(
-        0.1,
-        startDimensions.current[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] + movement * 2
-      );
+      newDimensions[axisIndex] = Math.max(0.1, startDimensions.current[axisIndex] + movement * 2);
+      newCenter[axisIndex] = startCenter.current[axisIndex] + movement * direction;
       
-      // Move center by half the dimension change
-      newCenter[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] = 
-        startCenter.current[axis === 'x' ? 0 : axis === 'y' ? 1 : 2] + (movement * direction);
+      latestCenter = newCenter;
+      latestDimensions = newDimensions;
       
-      onChange(newCenter, newDimensions);
-    }
-  }, [isDragging, dragFace, camera, raycaster, pointer, onChange]);
+      // Update LOCAL state only - this doesn't trigger parent re-render
+      setLocalCenter(newCenter);
+      setLocalDimensions(newDimensions);
+    };
 
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false);
-    setDragFace(null);
-  }, []);
+    const handleUp = () => {
+      // Re-enable OrbitControls
+      if (controls) {
+        (controls as any).enabled = true;
+      }
+      
+      // Call onChange ONLY ONCE at drag end
+      onChangeRef.current(latestCenter, latestDimensions);
+      
+      setIsDragging(false);
+      setDragFace(null);
+    };
 
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [isDragging, dragFace, gl, controls, getFaceAxis, getFaceDirection]);
+
+  // Update cursor
   useEffect(() => {
     const canvas = gl.domElement;
-    
-    if (isDragging) {
-      canvas.style.cursor = 'grabbing';
-    } else if (hoverFace) {
-      canvas.style.cursor = 'grab';
-    } else {
-      canvas.style.cursor = 'default';
-    }
-    
+    canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+    return () => { canvas.style.cursor = 'default'; };
+  }, [isDragging, gl]);
+
+  // Cleanup materials on unmount
+  useEffect(() => {
     return () => {
-      canvas.style.cursor = 'default';
+      Object.values(materials).forEach(mat => mat.dispose());
     };
-  }, [isDragging, hoverFace, gl]);
+  }, [materials]);
 
-  // Helper functions
-  const getFaceNormal = (faceName: string): THREE.Vector3 => {
-    const normals: { [key: string]: THREE.Vector3 } = {
-      front: new THREE.Vector3(0, 0, 1),
-      back: new THREE.Vector3(0, 0, -1),
-      left: new THREE.Vector3(-1, 0, 0),
-      right: new THREE.Vector3(1, 0, 0),
-      top: new THREE.Vector3(0, 1, 0),
-      bottom: new THREE.Vector3(0, -1, 0)
-    };
-    return normals[faceName];
-  };
+  // Use LOCAL state for rendering - this is what makes dragging smooth
+  const [width, height, depth] = localDimensions;
 
-  const getFaceOffset = (faceName: string, dims: [number, number, number]): THREE.Vector3 => {
-    const [width, height, depth] = dims;
-    const offsets: { [key: string]: THREE.Vector3 } = {
-      front: new THREE.Vector3(0, 0, depth / 2),
-      back: new THREE.Vector3(0, 0, -depth / 2),
-      left: new THREE.Vector3(-width / 2, 0, 0),
-      right: new THREE.Vector3(width / 2, 0, 0),
-      top: new THREE.Vector3(0, height / 2, 0),
-      bottom: new THREE.Vector3(0, -height / 2, 0)
-    };
-    return offsets[faceName];
-  };
-
-  const getFaceAxis = (faceName: string): 'x' | 'y' | 'z' => {
-    if (faceName === 'left' || faceName === 'right') return 'x';
-    if (faceName === 'top' || faceName === 'bottom') return 'y';
-    return 'z';
-  };
-
-  const getFaceDirection = (faceName: string): number => {
-    if (faceName === 'right' || faceName === 'top' || faceName === 'front') return 1;
-    return -1;
-  };
-
-  const [width, height, depth] = dimensions;
+  // Memoized face component
+  const renderFace = useCallback((
+    position: [number, number, number],
+    rotation: [number, number, number],
+    scale: [number, number, number],
+    faceName: string
+  ) => (
+    <mesh
+      key={faceName}
+      material={dragFace === faceName ? materials.hover : materials.normal}
+      position={position}
+      rotation={rotation}
+      scale={scale}
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => handlePointerDown(e, faceName)}
+    >
+      <planeGeometry />
+    </mesh>
+  ), [materials, dragFace, handlePointerDown]);
 
   return (
-    <group ref={groupRef} position={center}>
+    <group ref={groupRef} position={localCenter}>
       {/* Wireframe box */}
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
@@ -192,50 +206,14 @@ const BBoxControl: React.FC<BBoxControlProps> = ({ center, dimensions, onChange 
       </lineSegments>
       
       {/* Draggable faces */}
-      {createFace(
-        new THREE.Vector3(0, 0, depth / 2),
-        new THREE.Euler(0, 0, 0),
-        [width, height],
-        'front',
-        hoverFace === 'front' || dragFace === 'front'
-      )}
-      {createFace(
-        new THREE.Vector3(0, 0, -depth / 2),
-        new THREE.Euler(0, Math.PI, 0),
-        [width, height],
-        'back',
-        hoverFace === 'back' || dragFace === 'back'
-      )}
-      {createFace(
-        new THREE.Vector3(-width / 2, 0, 0),
-        new THREE.Euler(0, -Math.PI / 2, 0),
-        [depth, height],
-        'left',
-        hoverFace === 'left' || dragFace === 'left'
-      )}
-      {createFace(
-        new THREE.Vector3(width / 2, 0, 0),
-        new THREE.Euler(0, Math.PI / 2, 0),
-        [depth, height],
-        'right',
-        hoverFace === 'right' || dragFace === 'right'
-      )}
-      {createFace(
-        new THREE.Vector3(0, height / 2, 0),
-        new THREE.Euler(-Math.PI / 2, 0, 0),
-        [width, depth],
-        'top',
-        hoverFace === 'top' || dragFace === 'top'
-      )}
-      {createFace(
-        new THREE.Vector3(0, -height / 2, 0),
-        new THREE.Euler(Math.PI / 2, 0, 0),
-        [width, depth],
-        'bottom',
-        hoverFace === 'bottom' || dragFace === 'bottom'
-      )}
+      {renderFace([0, 0, depth / 2], [0, 0, 0], [width, height, 1], 'front')}
+      {renderFace([0, 0, -depth / 2], [0, Math.PI, 0], [width, height, 1], 'back')}
+      {renderFace([-width / 2, 0, 0], [0, -Math.PI / 2, 0], [depth, height, 1], 'left')}
+      {renderFace([width / 2, 0, 0], [0, Math.PI / 2, 0], [depth, height, 1], 'right')}
+      {renderFace([0, height / 2, 0], [-Math.PI / 2, 0, 0], [width, depth, 1], 'top')}
+      {renderFace([0, -height / 2, 0], [Math.PI / 2, 0, 0], [width, depth, 1], 'bottom')}
       
-      {/* Corner spheres for visual feedback */}
+      {/* Corner spheres */}
       {[
         [-width/2, -height/2, -depth/2],
         [width/2, -height/2, -depth/2],
@@ -253,6 +231,16 @@ const BBoxControl: React.FC<BBoxControlProps> = ({ center, dimensions, onChange 
       ))}
     </group>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if props actually changed
+  return (
+    prevProps.center[0] === nextProps.center[0] &&
+    prevProps.center[1] === nextProps.center[1] &&
+    prevProps.center[2] === nextProps.center[2] &&
+    prevProps.dimensions[0] === nextProps.dimensions[0] &&
+    prevProps.dimensions[1] === nextProps.dimensions[1] &&
+    prevProps.dimensions[2] === nextProps.dimensions[2]
+  );
+});
 
 export default BBoxControl;

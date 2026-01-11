@@ -281,7 +281,7 @@ export interface MeshSegmentationRequest {
   mesh_path?: string;
   mesh_base64?: string;
   mesh_file_id?: string; // preferred method
-  num_parts: number;
+  // num_parts: number;
   output_format: 'glb' | 'json';
   model_preference?: string;
 }

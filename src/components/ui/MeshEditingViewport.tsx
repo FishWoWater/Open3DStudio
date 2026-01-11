@@ -226,6 +226,7 @@ const MeshEditingViewport: React.FC<MeshEditingViewportProps> = ({
           dampingFactor={0.05}
           minDistance={1}
           maxDistance={50}
+          enabled={true}
         />
       </Canvas>
     </ViewportContainer>
