@@ -145,6 +145,7 @@ interface MeshEditingSidebarProps {
   onModeChange: (mode: 'text' | 'image') => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  canSubmit?: boolean;
   // Text mode props
   sourcePrompt: string;
   targetPrompt: string;
@@ -173,6 +174,7 @@ const MeshEditingSidebar: React.FC<MeshEditingSidebarProps> = ({
   onModeChange,
   onSubmit,
   isSubmitting,
+  canSubmit = true,
   sourcePrompt,
   targetPrompt,
   onSourcePromptChange,
@@ -266,7 +268,8 @@ const MeshEditingSidebar: React.FC<MeshEditingSidebarProps> = ({
     }
   };
 
-  const canSubmit = () => {
+  const isFormValid = () => {
+    if (!canSubmit) return false;
     if (mode === 'text') {
       return sourcePrompt.trim() && targetPrompt.trim() && selectedModel && !isSubmitting;
     } else {
@@ -453,9 +456,16 @@ const MeshEditingSidebar: React.FC<MeshEditingSidebarProps> = ({
 
         {/* Submit Button */}
         <FormSection>
-          <SubmitButton disabled={!canSubmit()} onClick={onSubmit}>
-            {isSubmitting ? 'Submitting...' : 'Start Mesh Editing'}
+          <SubmitButton disabled={!isFormValid()} onClick={onSubmit}>
+            {isSubmitting ? 'Submitting...' : 
+             !canSubmit ? 'Upload mesh to continue' :
+             'Start Mesh Editing'}
           </SubmitButton>
+          {!canSubmit && (
+            <InfoBox>
+              Please upload a mesh file in the viewport area to begin editing
+            </InfoBox>
+          )}
         </FormSection>
       </SidebarContent>
     </SidebarContainer>

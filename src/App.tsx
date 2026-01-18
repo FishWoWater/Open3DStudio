@@ -357,10 +357,10 @@ const App: React.FC = () => {
           )}
           
           {/* Mesh Editing Modal */}
-          {ui.modal.type === 'mesh-editing' && ui.modal.data?.task && (
+          {ui.modal.type === 'mesh-editing' && (
             <MeshEditingModal
               isOpen={ui.modal.isOpen}
-              task={ui.modal.data.task}
+              task={ui.modal.data?.task || null}
               onClose={closeModal}
             />
           )}

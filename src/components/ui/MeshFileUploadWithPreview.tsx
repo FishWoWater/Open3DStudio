@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader';
@@ -140,6 +141,41 @@ const SourceBadge = styled.div<{ source: 'upload' | 'task' }>`
   white-space: nowrap;
 `;
 
+const HintBox = styled.div`
+  background: ${props => `${props.theme.colors.warning}15`};
+  border: 1px solid ${props => `${props.theme.colors.warning}30`};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  color: ${props => props.theme.colors.text.secondary};
+  display: flex;
+  align-items: flex-start;
+  gap: ${props => props.theme.spacing.xs};
+  margin-top: ${props => props.theme.spacing.sm};
+`;
+
+const ConvertButton = styled.button`
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
+  background: ${props => props.theme.colors.primary[500]};
+  color: white;
+  border: none;
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  cursor: pointer;
+  transition: all ${props => props.theme.transitions.fast};
+  white-space: nowrap;
+  margin-top: ${props => props.theme.spacing.sm};
+
+  &:hover {
+    background: ${props => props.theme.colors.primary[600]};
+  }
+
+  &:disabled {
+    background: ${props => props.theme.colors.gray[600]};
+    cursor: not-allowed;
+  }
+`;
+
 interface MeshPreviewProps {
   meshObject: THREE.Object3D;
 }
@@ -171,6 +207,7 @@ export interface MeshFileUploadWithPreviewProps {
   hint?: string;
   sourceUrl?: string; // URL from task result
   sourceTaskName?: string; // Name of source task
+  showYUpHint?: boolean; // Whether to show Y-UP orientation hint
 }
 
 const MeshFileUploadWithPreview: React.FC<MeshFileUploadWithPreviewProps> = ({
@@ -182,14 +219,76 @@ const MeshFileUploadWithPreview: React.FC<MeshFileUploadWithPreviewProps> = ({
   label = '3D Mesh Upload',
   hint,
   sourceUrl,
-  sourceTaskName
+  sourceTaskName,
+  showYUpHint = false
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [meshObject, setMeshObject] = useState<THREE.Object3D | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isConverted, setIsConverted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const meshSource = useRef<'upload' | 'task'>('upload');
+
+  // Convert Z-UP to Y-UP by rotating -90° around X-axis and export as new file
+  const convertZUpToYUp = useCallback(async () => {
+    if (!meshObject || !value) return;
+
+    try {
+      const clonedMesh = meshObject.clone(true);
+      const rotationMatrix = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+      
+      // Bake rotation directly into each geometry
+      clonedMesh.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh && child.geometry) {
+          // Clone geometry to avoid modifying original
+          child.geometry = child.geometry.clone();
+          
+          // Apply rotation to geometry positions
+          child.geometry.applyMatrix4(rotationMatrix);
+          
+          // Recompute normals from the transformed geometry
+          child.geometry.computeVertexNormals();
+        }
+      });
+      
+      // Reset any transforms on the cloned object
+      clonedMesh.position.set(0, 0, 0);
+      clonedMesh.rotation.set(0, 0, 0);
+      clonedMesh.scale.set(1, 1, 1);
+      clonedMesh.updateMatrixWorld(true);
+
+      // Export the converted mesh as GLB file
+      const exporter = new GLTFExporter();
+      
+      exporter.parse(
+        clonedMesh,
+        (result) => {
+          const blob = new Blob([result as ArrayBuffer], { type: 'model/gltf-binary' });
+          const originalName = value.name.replace(/\.[^/.]+$/, '');
+          const newFileName = `${originalName}_y-up.glb`;
+          const convertedFile = new File([blob], newFileName, { type: 'model/gltf-binary' });
+          
+          onChange(convertedFile, null);
+          setMeshObject(clonedMesh);
+          setIsConverted(true);
+        },
+        (error) => {
+          console.error('Error exporting converted mesh:', error);
+          setLoadError('Failed to convert mesh. Please try again.');
+        },
+        { binary: true }
+      );
+    } catch (error) {
+      console.error('Error during conversion:', error);
+      setLoadError('Failed to convert mesh. Please try again.');
+    }
+  }, [meshObject, value, onChange]);
+
+  // Reset conversion state when file changes
+  useEffect(() => {
+    setIsConverted(false);
+  }, [value, sourceUrl]);
 
   // Load mesh for preview
   useEffect(() => {
@@ -397,6 +496,26 @@ const MeshFileUploadWithPreview: React.FC<MeshFileUploadWithPreviewProps> = ({
           </CanvasContainer>
         </PreviewContainer>
       )}
+
+      {/* Y-UP Orientation Hint and Conversion */}
+      {showYUpHint && hasFile && (
+        <>
+          <HintBox>
+            <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
+            <div>
+              <strong>Y-UP Required:</strong> Please ensure your model uses Y-UP orientation. 
+              If your model is Z-UP (e.g., from Blender default export), click the button below to convert it. 
+            </div>
+          </HintBox>
+          <ConvertButton 
+            onClick={convertZUpToYUp} 
+            disabled={!meshObject || isConverted || isLoading}
+          >
+            {isConverted ? '✓ Converted to Y-UP (GLB)' : 'Convert Z-UP → Y-UP'}
+          </ConvertButton>
+        </>
+      )}
+
       <input
         ref={fileInputRef}
         type="file"

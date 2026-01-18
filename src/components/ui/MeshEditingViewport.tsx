@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import styled from 'styled-components';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
@@ -63,6 +63,7 @@ interface MeshEditingViewportProps {
   bboxCenter: [number, number, number];
   bboxDimensions: [number, number, number];
   onBBoxChange: (center: [number, number, number], dimensions: [number, number, number]) => void;
+  onBBoxInitialized?: (center: [number, number, number], dimensions: [number, number, number]) => void;
 }
 
 // Component to load and display the mesh
@@ -141,7 +142,8 @@ const MeshLoader: React.FC<{ url: string; format?: string; onLoaded: (bbox: THRE
     };
 
     loadMesh();
-  }, [url, format, onLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, format]);
 
   if (!mesh) return null;
 
@@ -153,15 +155,42 @@ const MeshEditingViewport: React.FC<MeshEditingViewportProps> = ({
   format,
   bboxCenter,
   bboxDimensions,
-  onBBoxChange
+  onBBoxChange,
+  onBBoxInitialized
 }) => {
   const [loading, setLoading] = useState(true);
   const [meshLoaded, setMeshLoaded] = useState(false);
+  const onBBoxInitializedRef = useRef(onBBoxInitialized);
+  
+  // Keep ref up to date
+  useEffect(() => {
+    onBBoxInitializedRef.current = onBBoxInitialized;
+  }, [onBBoxInitialized]);
 
-  const handleMeshLoaded = (bbox: THREE.Box3) => {
+  const handleMeshLoaded = useCallback((bbox: THREE.Box3) => {
     setMeshLoaded(true);
     setLoading(false);
-  };
+    
+    // Calculate center and dimensions from bounding box
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+    
+    // Initialize bbox if callback is provided
+    if (onBBoxInitializedRef.current) {
+      onBBoxInitializedRef.current(
+        [center.x, center.y, center.z],
+        [size.x, size.y, size.z]
+      );
+    }
+  }, []);
+
+  // Reset loading state when mesh URL changes
+  useEffect(() => {
+    setLoading(true);
+    setMeshLoaded(false);
+  }, [meshUrl]);
 
   return (
     <ViewportContainer>

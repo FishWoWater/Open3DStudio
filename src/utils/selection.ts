@@ -46,7 +46,7 @@ export class SelectionManager {
       point: intersect.point,
       distance: intersect.distance,
       face: intersect.face,
-      faceIndex: intersect.faceIndex,
+      faceIndex: intersect.faceIndex ?? undefined, // Convert null to undefined for compatibility
       modelId: this.findModelId(intersect.object)
     }));
   }

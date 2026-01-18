@@ -2,6 +2,7 @@ import React, { Suspense, useRef, useCallback, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
+import { EffectComposer, Outline } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { useViewport, useStoreActions } from '../../store';
 import ViewportPlaceholder from './ViewportPlaceholder';
@@ -224,6 +225,22 @@ const Scene: React.FC = () => {
     return [totalScale[0] / count, totalScale[1] / count, totalScale[2] / count] as [number, number, number];
   }, [viewport.loadedModels]);
 
+  // Collect all THREE.Object3D meshes from selected models for outline effect
+  const selectedMeshes = useMemo(() => {
+    const meshes: THREE.Object3D[] = [];
+    viewport.loadedModels.forEach(model => {
+      if (model.selected && model.object3D) {
+        // Collect all mesh children from the object
+        model.object3D.traverse((child: THREE.Object3D) => {
+          if (child instanceof THREE.Mesh) {
+            meshes.push(child);
+          }
+        });
+      }
+    });
+    return meshes;
+  }, [viewport.loadedModels]);
+
   return (
     <>
       {/* Lighting */}
@@ -307,6 +324,20 @@ const Scene: React.FC = () => {
         maxDistance={100}
         enabled={!viewport.isTransforming} // Disable when transforming
       />
+
+      {/* Post-processing effects for selection outline - always rendered for stable performance */}
+      <EffectComposer autoClear={false}>
+        <Outline
+          selection={selectedMeshes}
+          selectionLayer={10}
+          edgeStrength={10.0}
+          pulseSpeed={0.0}
+          visibleEdgeColor={0xffff99}
+          hiddenEdgeColor={0x22227f}
+          blur={false}
+          xRay={true}
+        />
+      </EffectComposer>
     </>
   );
 };

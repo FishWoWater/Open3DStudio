@@ -9,6 +9,10 @@
 The supported workflows include text-to-3d, image-to-3d, mesh segmentation, texture generation, auto-rigging, part completion, mesh re-topologize and mesh uv unwrapping etc.
 
 ## CHANGELOG 
+### Updates 01.17 (Releasing V1.1.0)
+* Add the feature of mesh editing (text based and image based)
+* Add the panel for advanced parameters for each model
+
 ### Updates 12.07 (Releasing V1.0.0)
 * Improving the UI display of the historical tasks 
 * Some minor fixes

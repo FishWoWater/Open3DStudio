@@ -281,7 +281,7 @@ const PartCompletionPanel: React.FC = () => {
         mesh_file_id: meshFileId,
         output_format: formData.outputFormat,
         model_preference: formData.modelPreference,
-        ...advancedParams // Include model-specific parameters
+        model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
       };
 
       // Start completion job
@@ -340,7 +340,7 @@ const PartCompletionPanel: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, advancedParams]);
 
   return (
     <PanelContainer>
@@ -374,6 +374,7 @@ const PartCompletionPanel: React.FC = () => {
           onChange={handleMeshChange}
           acceptedFormats={['.glb', '.obj', '.fbx', '.ply', '.stl']}
           maxSizeMB={200}
+          showYUpHint={true}
         />
       </FormSection>
 

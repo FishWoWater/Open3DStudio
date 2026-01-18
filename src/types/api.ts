@@ -225,6 +225,7 @@ export interface TextToMeshRequest {
   text_prompt: string;
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface TextToTexturedMeshRequest {
@@ -233,6 +234,7 @@ export interface TextToTexturedMeshRequest {
   texture_resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface ImageToMeshRequest {
@@ -241,6 +243,7 @@ export interface ImageToMeshRequest {
   image_file_id?: string; // preferred method
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface ImageToTexturedMeshRequest {
@@ -253,6 +256,7 @@ export interface ImageToTexturedMeshRequest {
   texture_resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface MeshPaintingRequest {
@@ -266,6 +270,7 @@ export interface MeshPaintingRequest {
   texture_resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface PartCompletionRequest {
@@ -274,6 +279,7 @@ export interface PartCompletionRequest {
   mesh_file_id?: string; // preferred method
   output_format: OutputFormat;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 // Mesh Segmentation Types - UPDATED
@@ -284,6 +290,7 @@ export interface MeshSegmentationRequest {
   // num_parts: number;
   output_format: 'glb' | 'json';
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 // Auto Rigging Types - UPDATED
@@ -293,6 +300,7 @@ export interface AutoRiggingRequest {
   rig_mode: 'skeleton' | 'skin' | 'full';
   output_format: 'fbx' | 'glb';
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 // Mesh Retopology Types
@@ -303,6 +311,7 @@ export interface MeshRetopologyRequest {
   output_format: OutputFormat;
   seed?: number;
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface RetopologyAvailableModels {
@@ -325,6 +334,7 @@ export interface MeshUVUnwrappingRequest {
   save_visuals?: boolean;
   output_format: 'obj' | 'glb';
   model_preference?: string;
+  model_parameters?: Record<string, any>;
 }
 
 export interface UVUnwrappingAvailableModels {
@@ -497,8 +507,7 @@ export interface TextMeshEditingRequest {
   resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
-  // Model-specific parameters can be added dynamically
-  [key: string]: any;
+  model_parameters?: Record<string, any>;
 }
 
 export interface ImageMeshEditingRequest {
@@ -526,8 +535,22 @@ export interface ImageMeshEditingRequest {
   resolution?: number;
   output_format: OutputFormat;
   model_preference?: string;
-  // Model-specific parameters can be added dynamically
-  [key: string]: any;
+  model_parameters?: Record<string, any>;
+}
+
+// Queue Stats Types
+export interface QueueStats {
+  pending_jobs: number;
+  processing_jobs: number;
+  completed_jobs: number;
+  max_queue_size: number | null;
+  queue_utilization: number | null;
+  timestamp: number;
+}
+
+export interface QueueStatsResponse {
+  success: boolean;
+  data: QueueStats;
 }
 
 // Error Types

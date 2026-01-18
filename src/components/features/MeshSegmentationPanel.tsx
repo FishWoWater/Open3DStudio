@@ -159,7 +159,6 @@ const InfoBox = styled.div`
 interface FormData {
   meshFile: File | null;
   uploadedMeshId: string | null;
-  // numParts: number;
   outputFormat: 'glb' | 'json';
   modelPreference?: string;
 }
@@ -170,7 +169,6 @@ const MeshSegmentationPanel: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     meshFile: null,
     uploadedMeshId: null,
-    // numParts: 5,
     outputFormat: 'glb',
     modelPreference: undefined
   });
@@ -309,9 +307,6 @@ const MeshSegmentationPanel: React.FC = () => {
       return 'Mesh file must be smaller than 200MB';
     }
     
-    // if (formData.numParts < 2 || formData.numParts > 32) {
-    //   return 'Number of parts must be between 2 and 32';
-    // }
     
     return null;
   }, [formData]);
@@ -353,12 +348,12 @@ const MeshSegmentationPanel: React.FC = () => {
       // Create segmentation request
       const request: MeshSegmentationRequest = {
         mesh_file_id: meshFileId,
-        // num_parts: formData.numParts,
         output_format: formData.outputFormat,
         model_preference: formData.modelPreference,
-        ...advancedParams // Include model-specific parameters
+        model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
       };
 
+      console.log(request);
       // Start segmentation job
       const response = await apiClient.segmentMesh(request);
 
@@ -385,7 +380,6 @@ const MeshSegmentationPanel: React.FC = () => {
             size: formData.meshFile!.size
           }],
           parameters: {
-            // numParts: formData.numParts,
             outputFormat: formData.outputFormat,
             modelPreference: formData.modelPreference
           }
@@ -416,7 +410,7 @@ const MeshSegmentationPanel: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, advancedParams]);
 
   return (
     <PanelContainer>
@@ -450,22 +444,9 @@ const MeshSegmentationPanel: React.FC = () => {
           onChange={handleMeshChange}
           acceptedFormats={['.glb', '.obj', '.fbx', '.ply', '.stl']}
           maxSizeMB={200}
+          showYUpHint={true}
         />
       </FormSection>
-
-      {/* <FormSection>
-        <Label>Number of Parts</Label>
-        <NumberInput
-          type="number"
-          min="2"
-          max="32"
-          value={formData.numParts}
-          onChange={(e) => handleInputChange('numParts', parseInt(e.target.value))}
-        />
-        <InfoBox>
-          Specify how many parts you want the mesh to be segmented into (2-32).
-        </InfoBox>
-      </FormSection> */}
 
       <FormSection>
         <Label>Output Format</Label>

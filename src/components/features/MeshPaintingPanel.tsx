@@ -491,7 +491,7 @@ const MeshPaintingPanel: React.FC = () => {
           texture_resolution: formData.textureResolution,
           output_format: formData.outputFormat,
           model_preference: formData.modelPreference,
-          ...advancedParams // Include model-specific parameters
+          model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
         };
 
         console.log("sending mesh painting request", request);
@@ -528,7 +528,7 @@ const MeshPaintingPanel: React.FC = () => {
           texture_resolution: formData.textureResolution,
           output_format: formData.outputFormat,
           model_preference: formData.modelPreference,
-          ...advancedParams // Include model-specific parameters
+          model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
         };
 
         response = await apiClient.imageMeshPainting(request);
@@ -601,7 +601,7 @@ const MeshPaintingPanel: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange, availableModels]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, availableModels, advancedParams]);
 
   return (
     <PanelContainer>
@@ -635,6 +635,7 @@ const MeshPaintingPanel: React.FC = () => {
           onChange={handleMeshChange}
           acceptedFormats={['.glb', '.obj', '.fbx', '.ply']}
           maxSizeMB={200}
+          showYUpHint={true}
         />
       </FormSection>
 

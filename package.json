@@ -1,28 +1,29 @@
 {
   "name": "open-3d-studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Cross-platform 3D AIGC studio built with React and Electron",
   "main": "build/electron.js",
   "homepage": "./",
   "dependencies": {
-    "@react-three/drei": "^9.88.0",
-    "@react-three/fiber": "^8.15.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^3.0.4",
     "@reduxjs/toolkit": "^2.0.1",
     "@types/node": "^20.10.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/three": "^0.160.0",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
     "axios": "^1.6.0",
     "framer-motion": "^11.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-dropzone": "^14.2.0",
     "react-redux": "^9.0.0",
     "react-router-dom": "^6.20.0",
     "react-scripts": "5.0.1",
     "styled-components": "^6.1.0",
-    "three": "^0.160.1",
+    "three": "^0.182.0",
     "three-stdlib": "^2.29.0",
     "uuid": "^9.0.0",
     "web-vitals": "^3.5.0",
@@ -95,7 +96,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "identity": null,
@@ -114,6 +118,6 @@
     },
     "compression": "normal",
     "nodeGypRebuild": false,
-    "buildVersion": "1.0.0"
+    "buildVersion": "1.1.0"
   }
 }

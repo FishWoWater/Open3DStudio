@@ -34,7 +34,8 @@ import {
   AuthResponse,
   ModelParametersResponse,
   TextMeshEditingRequest,
-  ImageMeshEditingRequest
+  ImageMeshEditingRequest,
+  QueueStatsResponse
 } from '../types/api';
 
 class ApiClient {
@@ -286,6 +287,13 @@ class ApiClient {
   async deleteJob(jobId: string): Promise<BaseApiResponse> {
     const response = await this.client.delete<BaseApiResponse>(
       `/api/v1/system/jobs/${jobId}`
+    );
+    return response.data;
+  }
+
+  async getQueueStats(): Promise<QueueStatsResponse> {
+    const response = await this.retry(() => 
+      this.client.get<QueueStatsResponse>('/api/v1/system/jobs/queue/stats')
     );
     return response.data;
   }

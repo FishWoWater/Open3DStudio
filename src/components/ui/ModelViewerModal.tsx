@@ -173,7 +173,7 @@ const ModelViewerModal: React.FC<ModelViewerModalProps> = ({
     renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace; // Updated API for Three.js r152+
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;

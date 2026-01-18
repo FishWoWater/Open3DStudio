@@ -145,6 +145,8 @@ const BottomBar: React.FC = () => {
   } = useStoreActions();
   const [featuresCount, setFeaturesCount] = useState(0);
   const [modelsCount, setModelsCount] = useState(0);
+  const [pendingJobs, setPendingJobs] = useState(0);
+  const [processingJobs, setProcessingJobs] = useState(0);
   const [showTransformModal, setShowTransformModal] = useState(false);
 
   // Check API connection and get system status
@@ -170,6 +172,18 @@ const BottomBar: React.FC = () => {
           setFeaturesCount(0);
           setModelsCount(0);
         }
+
+        // Get queue stats
+        try {
+          const queueStats = await apiClient.getQueueStats();
+          setPendingJobs(queueStats.data.pending_jobs || 0);
+          setProcessingJobs(queueStats.data.processing_jobs || 0);
+        } catch (err) {
+          // If queue stats fails, just log it and continue
+          console.warn('Failed to get queue stats:', err);
+          setPendingJobs(0);
+          setProcessingJobs(0);
+        }
         
         updateSystemStatus({ 
           isOnline: isConnected,
@@ -184,6 +198,8 @@ const BottomBar: React.FC = () => {
         });
         setFeaturesCount(0);
         setModelsCount(0);
+        setPendingJobs(0);
+        setProcessingJobs(0);
       }
     };
 
@@ -360,6 +376,7 @@ const BottomBar: React.FC = () => {
         <SystemInfo>
           <span>Features: {featuresCount}</span>
           <span>Models: {modelsCount}</span>
+          <span>Queue: {pendingJobs} pending / {processingJobs} processing</span>
         </SystemInfo>
         
         {/* <PerformanceInfo>

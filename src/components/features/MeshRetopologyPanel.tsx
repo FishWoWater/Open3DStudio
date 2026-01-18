@@ -452,7 +452,7 @@ const MeshRetopologyPanel: React.FC = () => {
         model_preference: formData.modelPreference,
         ...(formData.targetVertexCount && { target_vertex_count: parseInt(formData.targetVertexCount) }),
         ...(formData.seed && { seed: parseInt(formData.seed) }),
-        ...advancedParams // Include model-specific parameters
+        model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
       };
 
       console.log('[DEBUG] Mesh retopology request:', request);
@@ -514,7 +514,7 @@ const MeshRetopologyPanel: React.FC = () => {
         duration: 5000
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, advancedParams]);
 
   return (
     <PanelContainer>
@@ -562,6 +562,7 @@ const MeshRetopologyPanel: React.FC = () => {
               onChange={handleMeshChange}
               acceptedFormats={['.obj', '.glb', '.fbx', '.ply', '.stl']}
               maxSizeMB={100}
+              showYUpHint={true}
             />
           </FormSection>
 

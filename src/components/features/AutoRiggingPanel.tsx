@@ -332,7 +332,7 @@ const AutoRiggingPanel: React.FC = () => {
         rig_mode: formData.rigMode,
         output_format: formData.outputFormat,
         model_preference: formData.modelPreference,
-        ...advancedParams // Include model-specific parameters
+        model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
       };
 
       // Start rigging job
@@ -391,7 +391,7 @@ const AutoRiggingPanel: React.FC = () => {
         message: err instanceof Error ? err.message : 'Failed to generate character rig. Please try again.'
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, advancedParams]);
 
   return (
     <PanelContainer>
@@ -425,6 +425,7 @@ const AutoRiggingPanel: React.FC = () => {
           onChange={handleMeshChange}
           acceptedFormats={['.glb', '.obj', '.fbx', '.ply', '.dae']}
           maxSizeMB={200}
+          showYUpHint={true}
         />
       </FormSection>
 

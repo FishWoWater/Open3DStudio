@@ -191,6 +191,13 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
             <span>{module.name}</span>
           </NavItem>
         ))}
+        <NavItem
+          active={false}
+          onClick={() => openModal('mesh-editing', { task: null })}
+        >
+          <i className="fas fa-edit"></i>
+          <span>Mesh Edit</span>
+        </NavItem>
       </MainNav>
 
       <HeaderActions>

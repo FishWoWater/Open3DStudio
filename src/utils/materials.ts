@@ -95,11 +95,12 @@ export class MaterialManager {
       this.ensureNormals(object);
     }
 
-    // If it's a selected object, use selection material regardless of render mode
-    if (isSelected) {
-      this.applySelectionMaterialToObject(object, renderMode, doubleSided);
-      return;
-    }
+    // Mark object as selected in userData - postprocessing outline will handle visual feedback
+    // DO NOT change materials - this preserves textures and original appearance
+    object.userData.selected = isSelected;
+    object.traverse((child) => {
+      child.userData.selected = isSelected;
+    });
 
     // Handle special render modes first
     if (renderMode === 'parts' && modelData?.parts?.hasParts) {

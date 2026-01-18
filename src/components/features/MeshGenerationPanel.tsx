@@ -9,7 +9,7 @@ import { useFeatureAvailability } from '../../hooks/useFeatureAvailability';
 import { useModelParameters } from '../../hooks/useModelParameters';
 import { TaskType } from '../../types/state';
 import { JobStatus, TextToMeshRequest, TextToTexturedMeshRequest, ImageToMeshRequest, ImageToTexturedMeshRequest } from '../../types/api';
-import { cleanModelName, isPartPackerAvailable } from '../../utils/modelNames';
+import { cleanModelName } from '../../utils/modelNames';
 
 const PanelContainer = styled.div`
   padding: ${props => props.theme.spacing.md};
@@ -307,11 +307,6 @@ const MeshGenerationPanel: React.FC = () => {
     return getModelsForFeature(featureName);
   }, [mode, getModelsForFeature]);
 
-  // Check for PartPacker availability
-  const partPackerAvailable = useMemo(() => {
-    return isPartPackerAvailable(availableModels);
-  }, [availableModels]);
-
   // Dynamic model preference options
   const modelPreferenceOptions: SelectOption[] = useMemo(() => {
     if (availableModels.length === 0) {
@@ -435,7 +430,7 @@ const MeshGenerationPanel: React.FC = () => {
             texture_resolution: formData.textureResolution,
             output_format: formData.outputFormat,
             model_preference: formData.modelPreference || availableModels[0],
-            ...advancedParams // Include model-specific parameters
+            model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
           };
           console.log('[DEBUG] Text to textured mesh request:', request);
           response = await apiClient.textToTexturedMesh(request);
@@ -446,7 +441,7 @@ const MeshGenerationPanel: React.FC = () => {
             text_prompt: formData.textPrompt,
             output_format: formData.outputFormat,
             model_preference: formData.modelPreference || availableModels[0],
-            ...advancedParams // Include model-specific parameters
+            model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
           };
           console.log('[DEBUG] Text to raw mesh request:', request);
           response = await apiClient.textToRawMesh(request);
@@ -484,7 +479,7 @@ const MeshGenerationPanel: React.FC = () => {
             texture_resolution: formData.textureResolution,
             output_format: formData.outputFormat,
             model_preference: formData.modelPreference || availableModels[0],
-            ...advancedParams // Include model-specific parameters
+            model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
           };
           console.log('[DEBUG] Image to textured mesh request:', request);
           response = await apiClient.imageToTexturedMesh(request);
@@ -496,7 +491,7 @@ const MeshGenerationPanel: React.FC = () => {
             image_file_id: imageFileId,
             output_format: formData.outputFormat,
             model_preference: formData.modelPreference || availableModels[0],
-            ...advancedParams // Include model-specific parameters
+            model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
           };
           // console.log('[DEBUG] Image to raw mesh request:', request);
           response = await apiClient.imageToRawMesh(request);
@@ -563,7 +558,7 @@ const MeshGenerationPanel: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [validateForm, mode, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, mode, formData, addTask, addNotification, handleInputChange, availableModels, advancedParams]);
 
   return (
     <PanelContainer>
@@ -703,15 +698,6 @@ const MeshGenerationPanel: React.FC = () => {
               <> Reason: {features[mode === 'text' ? 'text-to-mesh' : 'image-to-mesh']?.error}</>
             )}
           </WarningBox>
-        </FormSection>
-      )}
-
-      {!featuresLoading && currentFeatureAvailable && partPackerAvailable && (
-        <FormSection>
-          <InfoBox>
-            <span style={{ fontSize: '16px' }}>✨</span>
-            PartPacker model is available! It supports Part-Level mesh generation.
-          </InfoBox>
         </FormSection>
       )}
 

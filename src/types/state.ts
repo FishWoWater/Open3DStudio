@@ -1,4 +1,5 @@
 import { JobStatus, OutputFormat, JobInfo, SystemStatus, AuthStatus, UserInfo } from './api';
+import * as THREE from 'three';
 
 // Application State Types
 export interface AppState {

@@ -14,7 +14,9 @@ export const cleanModelName = (modelName: string): string => {
     '_image_mesh_painting',
     '_mesh_segmentation',
     '_part_completion',
-    '_auto_rigging'
+    '_auto_rigging', 
+    '_text_mesh_editing', 
+    '_image_mesh_editing'
   ];
 
   let cleanedName = modelName;
@@ -30,13 +32,3 @@ export const cleanModelName = (modelName: string): string => {
   return cleanedName;
 };
 
-/**
- * Check if a model name indicates PartPacker availability
- * @param modelNames - Array of model names to check
- * @returns True if PartPacker is available
- */
-export const isPartPackerAvailable = (modelNames: string[]): boolean => {
-  return modelNames.some(name => 
-    name.toLowerCase().includes('partpacker')
-  );
-}; 

@@ -499,7 +499,7 @@ const MeshUVUnwrappingPanel: React.FC = () => {
         save_individual_parts: formData.saveIndividualParts,
         save_visuals: formData.saveVisuals,
         model_preference: formData.modelPreference,
-        ...advancedParams // Include model-specific parameters
+        model_parameters: advancedParams // Model-specific parameters wrapped in model_parameters
       };
 
       console.log('[DEBUG] Mesh UV unwrapping request:', request);
@@ -562,7 +562,7 @@ const MeshUVUnwrappingPanel: React.FC = () => {
         duration: 5000
       });
     }
-  }, [validateForm, formData, addTask, addNotification, handleInputChange]);
+  }, [validateForm, formData, addTask, addNotification, handleInputChange, advancedParams]);
 
   return (
     <PanelContainer>
@@ -610,6 +610,7 @@ const MeshUVUnwrappingPanel: React.FC = () => {
               onChange={handleMeshChange}
               acceptedFormats={['.obj', '.glb']}
               maxSizeMB={100}
+              showYUpHint={true}
             />
           </FormSection>
 
