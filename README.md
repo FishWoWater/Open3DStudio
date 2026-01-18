@@ -39,6 +39,7 @@ For higher-quality video demo, please check [Youtube](https://youtu.be/LNteOF3Xm
 * Auto Rigging
 * Mesh Retopologize 
 * Mesh UV Unwrapping 
+* Mesh Editing
 
 The available models are up to the API backend, refer to [3DAIGC-API](https://github.com/FishWoWater/3DAIGC-API) for the example model matrix
 
@@ -54,7 +55,7 @@ The available models are up to the API backend, refer to [3DAIGC-API](https://gi
 ## Quick Start
 ```bash
 # development mode 
-npm install
+npm install --legacy-peer-deps
 npm run dev
 ## For web: Open [http://localhost:3000](http://localhost:3000)
 -## or desktop: Electron app launches automatically
